@@ -1,0 +1,408 @@
+teolan_govender@LAPTOP-4KISL5TR:~$ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/WindowsApps/MicrosoftCorporationII.WindowsSubsystemForLinux_2.6.3.0_x64__8wekyb3d8bbwe:/mnt/c/Python313/Scripts/:/mnt/c/Python313/:/mnt/c/Program Files/SqlCmd/:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/ProgramData/chocolatey/bin:/mnt/c/Users/Teolan Govender/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/Teolan Govender/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/Teolan Govender/AppData/Local/GitHubDesktop/bin:/snap/bin
+teolan_govender@LAPTOP-4KISL5TR:~$ which cat
+/usr/bin/cat
+teolan_govender@LAPTOP-4KISL5TR:~$ which tac
+/usr/bin/tac
+teolan_govender@LAPTOP-4KISL5TR:~$
+teolan_govender@LAPTOP-4KISL5TR:~$ echo path
+path
+teolan_govender@LAPTOP-4KISL5TR:~$ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/WindowsApps/MicrosoftCorporationII.WindowsSubsystemForLinux_2.6.3.0_x64__8wekyb3d8bbwe:/mnt/c/Python313/Scripts/:/mnt/c/Python313/:/mnt/c/Program Files/SqlCmd/:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/ProgramData/chocolatey/bin:/mnt/c/Users/Teolan Govender/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/Teolan Govender/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/Teolan Govender/AppData/Local/GitHubDesktop/bin:/snap/bin
+teolan_govender@LAPTOP-4KISL5TR:~$ echo $PATH | tr ':' '\n'
+/usr/local/sbin
+/usr/local/bin
+/usr/sbin
+/usr/bin
+/sbin
+/bin
+/usr/games
+/usr/local/games
+/usr/lib/wsl/lib
+/mnt/c/Program Files/WindowsApps/MicrosoftCorporationII.WindowsSubsystemForLinux_2.6.3.0_x64__8wekyb3d8bbwe
+/mnt/c/Python313/Scripts/
+/mnt/c/Python313/
+/mnt/c/Program Files/SqlCmd/
+/mnt/c/WINDOWS/system32
+/mnt/c/WINDOWS
+/mnt/c/WINDOWS/System32/Wbem
+/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/
+/mnt/c/WINDOWS/System32/OpenSSH/
+/mnt/c/ProgramData/chocolatey/bin
+/mnt/c/Users/Teolan Govender/AppData/Local/Microsoft/WindowsApps
+/mnt/c/Users/Teolan Govender/AppData/Local/Programs/Microsoft VS Code/bin
+/mnt/c/Users/Teolan Govender/AppData/Local/GitHubDesktop/bin
+/snap/bin
+teolan_govender@LAPTOP-4KISL5TR:~$ -h
+-h: command not found
+teolan_govender@LAPTOP-4KISL5TR:~$ --help
+--help: command not found
+teolan_govender@LAPTOP-4KISL5TR:~$ man ls
+teolan_govender@LAPTOP-4KISL5TR:~$ pwd
+/home/teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:~$ cd ..
+teolan_govender@LAPTOP-4KISL5TR:/home$ pwd
+/home
+teolan_govender@LAPTOP-4KISL5TR:/home$ cd teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:~$ pwd
+/home/teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:~$ mkdir dir1/dir2/dir3
+mkdir: cannot create directory ‘dir1/dir2/dir3’: No such file or directory
+teolan_govender@LAPTOP-4KISL5TR:~$ mkdir -p dir1/dir2/dir3
+teolan_govender@LAPTOP-4KISL5TR:~$ rmdir dir1
+rmdir: failed to remove 'dir1': Directory not empty
+teolan_govender@LAPTOP-4KISL5TR:~$ rm -rf dir1
+teolan_govender@LAPTOP-4KISL5TR:~$ ls
+output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l
+total 4
+-rw-r--r-- 1 teolan_govender teolan_govender 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l -a
+total 40
+drwxr-x--- 4 teolan_govender teolan_govender 4096 Mar 24 10:48 .
+drwxr-xr-x 3 root            root            4096 Mar 23 15:46 ..
+-rw------- 1 teolan_govender teolan_govender   15 Mar 24 06:11 .bash_history
+-rw-r--r-- 1 teolan_govender teolan_govender  220 Mar 23 15:46 .bash_logout
+-rw-r--r-- 1 teolan_govender teolan_govender 3771 Mar 23 15:46 .bashrc
+drwx------ 2 teolan_govender teolan_govender 4096 Mar 23 15:48 .cache
+drwxr-xr-x 2 teolan_govender teolan_govender 4096 Mar 23 15:48 .landscape
+-rw------- 1 teolan_govender teolan_govender   20 Mar 24 10:28 .lesshst
+-rw-r--r-- 1 teolan_govender teolan_govender    0 Mar 24 09:51 .motd_shown
+-rw-r--r-- 1 teolan_govender teolan_govender  807 Mar 23 15:46 .profile
+-rw-r--r-- 1 teolan_govender teolan_govender   11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -la
+total 40
+drwxr-x--- 4 teolan_govender teolan_govender 4096 Mar 24 10:48 .
+drwxr-xr-x 3 root            root            4096 Mar 23 15:46 ..
+-rw------- 1 teolan_govender teolan_govender   15 Mar 24 06:11 .bash_history
+-rw-r--r-- 1 teolan_govender teolan_govender  220 Mar 23 15:46 .bash_logout
+-rw-r--r-- 1 teolan_govender teolan_govender 3771 Mar 23 15:46 .bashrc
+drwx------ 2 teolan_govender teolan_govender 4096 Mar 23 15:48 .cache
+drwxr-xr-x 2 teolan_govender teolan_govender 4096 Mar 23 15:48 .landscape
+-rw------- 1 teolan_govender teolan_govender   20 Mar 24 10:28 .lesshst
+-rw-r--r-- 1 teolan_govender teolan_govender    0 Mar 24 09:51 .motd_shown
+-rw-r--r-- 1 teolan_govender teolan_govender  807 Mar 23 15:46 .profile
+-rw-r--r-- 1 teolan_govender teolan_govender   11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ pwd
+/home/teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:~$ cd /usr/local
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ ls -l
+total 32
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 bin
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 etc
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 games
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 include
+drwxr-xr-x 3 root root 4096 Feb 10 02:54 lib
+lrwxrwxrwx 1 root root    9 Feb 10 02:54 man -> share/man
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 sbin
+drwxr-xr-x 7 root root 4096 Feb 10 02:56 share
+drwxr-xr-x 2 root root 4096 Feb 10 02:54 src
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ cd games
+teolan_govender@LAPTOP-4KISL5TR:/usr/local/games$ ls -l
+total 0
+teolan_govender@LAPTOP-4KISL5TR:/usr/local/games$ cd .
+teolan_govender@LAPTOP-4KISL5TR:/usr/local/games$ cd ..
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ ls -t
+share  lib  etc  man  src  sbin  include  games  bin
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ ls -ta
+share  lib  .  etc  man  src  sbin  include  games  bin  ..
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ ls -latr
+total 40
+drwxr-xr-x 12 root root 4096 Feb 10 02:54 ..
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 bin
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 games
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 include
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 sbin
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 src
+lrwxrwxrwx  1 root root    9 Feb 10 02:54 man -> share/man
+drwxr-xr-x  2 root root 4096 Feb 10 02:54 etc
+drwxr-xr-x 10 root root 4096 Feb 10 02:54 .
+drwxr-xr-x  3 root root 4096 Feb 10 02:54 lib
+drwxr-xr-x  7 root root 4096 Feb 10 02:56 share
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ tree -c
+Command 'tree' not found, but can be installed with:
+sudo snap install tree
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ ls -R
+.:
+bin  etc  games  include  lib  man  sbin  share  src
+
+./bin:
+
+./etc:
+
+./games:
+
+./include:
+
+./lib:
+python3.12
+
+./lib/python3.12:
+dist-packages
+
+./lib/python3.12/dist-packages:
+
+./sbin:
+
+./share:
+ca-certificates  fonts  man  sgml  xml
+
+./share/ca-certificates:
+
+./share/fonts:
+
+./share/man:
+
+./share/sgml:
+declaration  dtd  entities  misc  stylesheet
+
+./share/sgml/declaration:
+
+./share/sgml/dtd:
+
+./share/sgml/entities:
+
+./share/sgml/misc:
+
+./share/sgml/stylesheet:
+
+./share/xml:
+declaration  entities  misc  schema
+
+./share/xml/declaration:
+
+./share/xml/entities:
+
+./share/xml/misc:
+
+./share/xml/schema:
+
+./src:
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ tree
+Command 'tree' not found, but can be installed with:
+sudo snap install tree
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ sudo snap install tree
+[sudo] password for teolan_govender:
+2026-03-24T17:13:29+02:00 INFO Waiting for automatic snapd restart...
+tree 2.1.3+pkg-5852 from 林博仁 Buo-ren Lin (brlin) installed
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ tree
+.
+└── share
+    └── fonts
+
+3 directories, 0 files
+teolan_govender@LAPTOP-4KISL5TR:/usr/local$ cd ..
+teolan_govender@LAPTOP-4KISL5TR:/usr$ cd
+teolan_govender@LAPTOP-4KISL5TR:~$ tree
+.
+├── output.txt
+└── snap
+    └── tree
+        ├── 54
+        ├── common
+        │   └── marker_publisher_changed_announcement_shown
+        └── current -> 54
+
+6 directories, 2 files
+teolan_govender@LAPTOP-4KISL5TR:~$ pwd
+/home/teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:~$ cd..
+cd..: command not found
+teolan_govender@LAPTOP-4KISL5TR:~$ cd ..
+teolan_govender@LAPTOP-4KISL5TR:/home$ tree
+.
+└── teolan_govender
+    ├── output.txt
+    └── snap
+        └── tree
+            ├── 54
+            ├── common
+            │   └── marker_publisher_changed_announcement_shown
+            └── current -> 54
+
+7 directories, 2 files
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls -l
+total 4
+drwxr-x--- 5 teolan_govender teolan_govender 4096 Mar 24 17:14 teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:/home$ groups
+teolan_govender adm cdrom sudo dip plugdev users
+teolan_govender@LAPTOP-4KISL5TR:/home$ id -Gn
+teolan_govender adm cdrom sudo dip plugdev users
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls -l
+total 4
+drwxr-x--- 5 teolan_govender teolan_govender 4096 Mar 24 17:14 teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls -l output.txt
+ls: cannot access 'output.txt': No such file or directory
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls
+teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls -l
+total 4
+drwxr-x--- 5 teolan_govender teolan_govender 4096 Mar 24 17:14 teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:/home$ ls -a
+.  ..  teolan_govender
+teolan_govender@LAPTOP-4KISL5TR:/home$ cd
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ chmod g+w output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-rw-rw-r-- 1 teolan_govender teolan_govender 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ chmod u+rwx output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-rwxrw-r-- 1 teolan_govender teolan_govender 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ groups
+teolan_govender adm cdrom sudo dip plugdev users
+teolan_govender@LAPTOP-4KISL5TR:~$ chgrps users output.txt
+Command 'chgrps' not found, did you mean:
+  command 'chgrp' from deb coreutils (9.4-3ubuntu6.2)
+Try: sudo apt install <deb name>
+teolan_govender@LAPTOP-4KISL5TR:~$ chgrp users output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-rwxrw-r-- 1 teolan_govender users 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ chmod 400 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-r-------- 1 teolan_govender users 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ chmod 755 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l output.txt
+-rwxr-xr-x 1 teolan_govender users 11 Mar 24 10:01 output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ umask -S
+u=rwx,g=rx,o=rx
+teolan_govender@LAPTOP-4KISL5TR:~$ find -iname OUTPUT.txt
+./output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ find -name "*t"
+./output.txt
+./snap/tree/current
+./.lesshst
+./.bash_logout
+teolan_govender@LAPTOP-4KISL5TR:~$ find -name "*t" -ls
+    46468      4 -rwxr-xr-x   1 teolan_govender users          11 Mar 24 10:01 ./output.txt
+    46518      0 lrwxrwxrwx   1 teolan_govender teolan_govender        2 Mar 24 17:14 ./snap/tree/current -> 54
+    46493      4 -rw-------   1 teolan_govender teolan_govender       20 Mar 24 10:28 ./.lesshst
+    46483      4 -rw-r--r--   1 teolan_govender teolan_govender      220 Mar 23 15:46 ./.bash_logout
+teolan_govender@LAPTOP-4KISL5TR:~$ nano output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ cat output.txt
+output.txt
+This is the output file used for demonstration purposes.
+teolan_govender@LAPTOP-4KISL5TR:~$ more output.txt
+output.txt
+This is the output file used for demonstration purposes.
+teolan_govender@LAPTOP-4KISL5TR:~$ less output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ cat output.txt
+output.txt
+This is the output file used for demonstration purposes.
+teolan_govender@LAPTOP-4KISL5TR:~$ nano output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ man ls
+teolan_govender@LAPTOP-4KISL5TR:~$ nano output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ Vi output.txt
+Vi: command not found
+teolan_govender@LAPTOP-4KISL5TR:~$ vi output.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ cat output.txt
+This is the output file used for demonstration purposes.
+I wrote this in VI editor
+teolan_govender@LAPTOP-4KISL5TR:~$ emacs output.txt
+Command 'emacs' not found, but can be installed with:
+sudo snap install emacs        # version 30.2, or
+sudo apt  install e3           # version 1:2.82+dfsg-2
+sudo apt  install emacs-gtk    # version 1:29.1+1-5ubuntu1
+sudo apt  install emacs-lucid  # version 1:29.1+1-5ubuntu1
+sudo apt  install emacs-nox    # version 1:29.1+1-5ubuntu1
+sudo apt  install emacs-pgtk   # version 1:29.1+1-5ubuntu1
+sudo apt  install jove         # version 4.17.5.3-1
+See 'snap info emacs' for additional versions.
+teolan_govender@LAPTOP-4KISL5TR:~$ sudo snap install emacs        # version 30.2
+[sudo] password for teolan_govender:
+error: This revision of snap "emacs" was published using classic confinement and thus may perform
+       arbitrary system changes outside of the security sandbox that snaps are usually confined to,
+       which may put your system at risk.
+
+       If you understand and want to proceed repeat the command including --classic.
+teolan_govender@LAPTOP-4KISL5TR:~$ sudo snap install emacs --classic
+emacs 30.2 from Alex Murray (alexmurray✪) installed
+teolan_govender@LAPTOP-4KISL5TR:~$ mv output.txt outputrenamed.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls
+outputrenamed.txt  snap
+teolan_govender@LAPTOP-4KISL5TR:~$ ls -l
+total 8
+-rwxr-xr-x 1 teolan_govender users             83 Mar 25 12:26 outputrenamed.txt
+drwx------ 3 teolan_govender teolan_govender 4096 Mar 24 17:14 snap
+teolan_govender@LAPTOP-4KISL5TR:~$ du -k outputrenamed.txt
+4       outputrenamed.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls *.txt
+a.txt  b.txt  c.txt  outputrenamed.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls *a
+ls: cannot access '*a': No such file or directory
+teolan_govender@LAPTOP-4KISL5TR:~$ ls a*
+'a - Copy (2).txt:Zone.Identifier'  'a - Copy.txt:Zone.Identifier'   a.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls *t
+a.txt  b.txt  c.txt  outputrenamed.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ ls
+'a - Copy (2).txt:Zone.Identifier'  'a - Copy.txt:Zone.Identifier'   a.txt   b.txt   c.txt   outputrenamed.txt   snap
+teolan_govender@LAPTOP-4KISL5TR:~$ mkdir letters
+teolan_govender@LAPTOP-4KISL5TR:~$ ls ?.txt
+a.txt  b.txt  c.txt
+teolan_govender@LAPTOP-4KISL5TR:~$ mv ?.txt letters
+teolan_govender@LAPTOP-4KISL5TR:~$ cd letters/
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ ls
+a.txt  b.txt  c.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ ls -l
+total 0
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 a.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 b.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 c.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ ls -l > content.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ cat content.txt
+total 0
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 a.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 b.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:20 c.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 0 Mar 25 13:36 content.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ nano a.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ ls -l a.txt
+-rw-r--r-- 1 teolan_govender teolan_govender 20 Mar 25 13:42 a.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ cat a.txt
+Spot the difference
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ nano b.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ diff a.txt b.txt
+1c1
+< Spot the difference
+---
+> spot teh difference
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ sdiff a.txt b.txt
+Spot the difference                                           | spot teh difference
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ vimdiff a.txt b.txt
+2 files to edit
+teolan_govender@LAPTOP-4KISL5TR:~$ tree
+.
+├── a - Copy (2).txt:Zone.Identifier
+├── a - Copy.txt:Zone.Identifier
+├── letters
+│   ├── a.txt
+│   ├── b.txt
+│   ├── c.txt
+│   └── content.txt
+├── outputrenamed.txt
+└── snap
+    └── tree
+        ├── 54
+        ├── common
+        │   └── marker_publisher_changed_announcement_shown
+        └── current -> 54
+
+7 directories, 8 files
+teolan_govender@LAPTOP-4KISL5TR:~$ ls
+'a - Copy (2).txt:Zone.Identifier'  'a - Copy.txt:Zone.Identifier'   letters   outputrenamed.txt   snap
+teolan_govender@LAPTOP-4KISL5TR:~$ cd letters/
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ grep -i "a" a.txt
+teolan_govender@LAPTOP-4KISL5TR:~/letters$ cat c.txt
+Carl
+Colton
+Carol
+Calvin
+Cayden
+Chris
+Chloe
+Coleteolan_govender@LAPTOP-4KISL5TR:~/letters$ grep Carl | cut -d: -f1,5
+teolan_govender@LAPTOP-4KISL5TR:~$ sftp linuxsvr
+ssh: Could not resolve hostname linuxsvr: Temporary failure in name resolution
+Connection closed.
+Connection closed
+teolan_govender@LAPTOP-4KISL5TR:~$
