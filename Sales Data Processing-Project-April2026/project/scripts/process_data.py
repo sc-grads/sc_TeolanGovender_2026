@@ -70,3 +70,4 @@ print(f'************************************************************************
 # Export to new file
 data_set.to_csv('../output/clean_sales.csv', index=False)
 print('\nsaving new dataset to output...')
+print('Setting consistent date formats if none...\n')
