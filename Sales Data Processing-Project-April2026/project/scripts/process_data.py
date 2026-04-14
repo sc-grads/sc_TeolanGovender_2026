@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+import calendar
 
 data_set = pd.read_csv(r"/mnt/c/sc_TeolanGovender_2026/Sales Data Processing-Project-April2026/project/data/Messy_Sales_Data.csv")
 
@@ -52,4 +53,21 @@ print('formatting consistent numerical values...')
 
 # ensure all date fields are consistent
 data_set['date'] = pd.to_datetime(data_set["date"], errors='coerce')
+print('Setting consistent date formats if none...\n')
+
+#create new calculated fields for revenue = quantity * price
+g = data_set.groupby('quantity')
+data_set['revenue'] = data_set['quantity'] * data_set['price']
+
+#create a month column to extract the month from the date
+data_set['month'] = pd.to_datetime(data_set['date']).dt.month
+data_set['month'] = data_set['month'].apply(lambda x: calendar.month_name[x])
+print(f'*********************************************************************************************************\n'
+      f'New dataset with calculated fields:\n'
+      f'*********************************************************************************************************\n'
+      f'{data_set}')
+
+# Export to new file
+data_set.to_csv('../output/clean_sales.csv', index=False)
+print('\nsaving new dataset to output...')
 print('Setting consistent date formats if none...\n')
