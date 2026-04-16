@@ -1,90 +1,14 @@
-[2026-04-14 14:45:44] start workflow
-[2026-04-14 14:45:44] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:45:45] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:45:45] START: python3 process_data.py
-[2026-04-14 14:45:45] SUCCESS: python3 process_data.py
-[2026-04-14 14:45:45] end workflow
-[2026-04-14 14:46:52] ----------start workflow----------
-[2026-04-14 14:46:52] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:46:52] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:46:52] START: python3 process_data.py
-[2026-04-14 14:46:53] SUCCESS: python3 process_data.py
-[2026-04-14 14:46:53] ----------end workflow----------
-[2026-04-14 14:53:18] ----------start workflow----------
-[2026-04-14 14:53:18] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:53:18] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 14:53:18] START: python3 process_data.py
-[2026-04-14 14:53:18] SUCCESS: python3 process_data.py
-[2026-04-14 14:53:18] ----------end workflow----------
-[2026-04-14 17:12:42] ----------start workflow----------
-[2026-04-14 17:12:42] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 17:12:42] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-14 17:12:42] START: python3 process_data.py
-[2026-04-14 17:12:43] SUCCESS: python3 process_data.py
-[2026-04-14 17:12:43] ----------end workflow----------
-[2026-04-15 07:47:34] ----------start workflow----------
-[2026-04-15 07:47:34] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 07:47:35] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 07:47:35] START: python3 process_data.py
-[2026-04-15 07:47:36] SUCCESS: python3 process_data.py
-[2026-04-15 07:47:36] ----------end workflow----------
-[2026-04-15 08:11:08] ----------start workflow----------
-[2026-04-15 08:11:08] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 08:11:09] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 08:11:09] START: python3 process_data.py
-[2026-04-15 08:11:09] SUCCESS: python3 process_data.py
-[2026-04-15 08:11:09] ----------end workflow----------
-[2026-04-15 09:52:35] ----------start workflow----------
-[2026-04-15 09:52:35] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 09:52:35] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 09:52:35] START: python3 process_data.py
-[2026-04-15 09:52:36] SUCCESS: python3 process_data.py
-[2026-04-15 09:52:36] ----------end workflow----------
-[2026-04-15 10:46:55] ----------start workflow----------
-[2026-04-15 10:46:55] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:46:56] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:46:56] START: python3 process_data.py
-[2026-04-15 10:46:56] SUCCESS: python3 process_data.py
-[2026-04-15 10:46:56] ----------end workflow----------
-[2026-04-15 10:49:27] ----------start workflow----------
-[2026-04-15 10:49:27] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:49:27] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:49:27] START: python3 process_data.py
-[2026-04-15 10:49:27] SUCCESS: python3 process_data.py
-[2026-04-15 10:49:27] ----------end workflow----------
-[2026-04-15 10:50:45] ----------start workflow----------
-[2026-04-15 10:50:45] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:50:46] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:50:46] START: python3 process_data.py
-[2026-04-15 10:50:46] SUCCESS: python3 process_data.py
-[2026-04-15 10:50:46] ----------end workflow----------
-[2026-04-15 10:52:05] ----------start workflow----------
-[2026-04-15 10:52:05] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:52:05] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:52:05] START: python3 process_data.py
-[2026-04-15 10:52:06] SUCCESS: python3 process_data.py
-[2026-04-15 10:52:06] ----------end workflow----------
-[2026-04-15 10:52:34] ----------start workflow----------
-[2026-04-15 10:52:34] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:52:34] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:52:34] START: python3 process_data.py
-[2026-04-15 10:52:35] SUCCESS: python3 process_data.py
-[2026-04-15 10:52:35] ----------end workflow----------
-[2026-04-15 10:53:17] ----------start workflow----------
-[2026-04-15 10:53:17] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:53:17] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 10:53:17] START: python3 process_data.py
-[2026-04-15 10:53:18] SUCCESS: python3 process_data.py
-[2026-04-15 10:53:18] ----------end workflow----------
-[2026-04-15 12:12:00] ----------start workflow----------
-[2026-04-15 12:12:00] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 12:12:00] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 12:12:00] START: python3 process_data.py
-[2026-04-15 12:12:01] SUCCESS: python3 process_data.py
-[2026-04-15 12:12:01] ----------end workflow----------
-[2026-04-15 13:36:03] ----------start workflow----------
-[2026-04-15 13:36:03] START: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 13:36:04] SUCCESS: python3 -c 'import pandas' 2>/dev/null
-[2026-04-15 13:36:04] START: python3 process_data.py
-[2026-04-15 13:36:04] SUCCESS: python3 process_data.py
-[2026-04-15 13:36:04] ----------end workflow----------
+[2026-04-16 08:10:35] ----------start workflow----------
+[2026-04-16 08:10:35] START: python3 -c 'import pandas' 2>/dev/null
+[2026-04-16 08:10:35] SUCCESS: python3 -c 'import pandas' 2>/dev/null
+[2026-04-16 08:10:35] START: python3 process_data.py
+[2026-04-16 08:10:35] SUCCESS: python3 process_data.py
+[2026-04-16 08:10:35] ----------end workflow----------
+[2026-04-16 08:12:32] ----------start workflow----------
+[2026-04-16 08:12:32] START: python3 process_data.py
+[2026-04-16 08:12:32] SUCCESS: python3 process_data.py
+[2026-04-16 08:12:32] ----------end workflow----------
+[2026-04-16 11:03:38] ----------start workflow----------
+[2026-04-16 11:03:38] START: python3 process_data.py
+[2026-04-16 11:03:39] SUCCESS: python3 process_data.py
+[2026-04-16 11:03:39] ----------end workflow----------
