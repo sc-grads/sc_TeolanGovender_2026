@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 LOG_FILE="../output/workflow.log"
