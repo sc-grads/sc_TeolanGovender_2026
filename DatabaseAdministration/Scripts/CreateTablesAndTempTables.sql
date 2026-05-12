@@ -23,3 +23,5 @@ where title = 'mr.'
 
 
 SELECT * FROM #TempPersonTable
+
+SELECT * FROM [AdventureWorks2019].[dbo].[EmployeePhoneDetail]
