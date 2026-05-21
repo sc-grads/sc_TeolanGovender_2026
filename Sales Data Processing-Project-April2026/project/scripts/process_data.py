@@ -44,16 +44,17 @@ for col in ['product', 'category', 'region', 'salesperson']:
     print(f'Setting consistent strings for {col} if none...')
 
 #cleaning missing values for salesperson
-map_ = {'North':'John', 'East':'David', 'South':'Mary', 'West':'Sarah'}
-data_set['salesperson'] = data_set['salesperson'].fillna(data_set['region'].map(map_))
-
+#map_ = {'North':'John', 'East':'David', 'South':'Mary', 'West':'Sarah'}
+#data_set['salesperson'] = data_set['salesperson'].fillna(data_set['region'].map(map_))
+data_set['salesperson'] = data_set['salesperson'].fillna('Unknown')
 
 # ensure all numeric fields are consistently numeric
-data_set['quantity'] = pd.to_numeric(data_set['quantity'], errors='coerce')
-data_set["quantity"] = data_set["quantity"].fillna(data_set["quantity"].mean().round(0))
+data_set = data_set.dropna(subset=['quantity'])
+data_set['quantity'] = pd.to_numeric(data_set['quantity'], errors='coerce').astype('Int64')
+#data_set["quantity"] = data_set["quantity"].fillna(data_set["quantity"].mean().round(0))
 data_set['price'] = pd.to_numeric(data_set['price'], errors='coerce')
-data_set["price"] = data_set["price"].fillna(data_set["price"].mean())
-data_set['quantity'] = data_set['quantity'].astype(int).replace(r'\.0', '', regex=True) # removes trailing .0
+#data_set["price"] = data_set["price"].fillna(data_set["price"].mean())
+#data_set['quantity'] = data_set['quantity'].astype(int).replace(r'\.0', '', regex=True) # removes trailing .0
 print('formatting consistent numerical values...')
 
 # ensure all date fields are consistent
