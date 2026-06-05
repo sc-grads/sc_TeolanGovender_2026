@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Get current time
         id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M SAST')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
       - name: Send message to Teams (PR or Push)
         run: |
