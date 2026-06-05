@@ -1,4 +1,4 @@
-name: Teams PR Notifications
+name: Teams GitHub Notifications
 
 on:
   pull_request:
@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Get current time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M SAST')" >> $GITHUB_OUTPUT
+
       - name: Send message to Teams (PR or Push)
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -26,7 +30,8 @@ jobs:
                     { "name": "Action", "value": "${{ github.event.action }}" },
                     { "name": "Title", "value": "${{ github.event.pull_request.title }}" },
                     { "name": "Author", "value": "${{ github.event.pull_request.user.login }}" },
-                    { "name": "Branch", "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}" }
+                    { "name": "Branch", "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}" },
+                    { "name": "Time", "value": "${{ steps.time.outputs.time }}" }
                   ],
                   "markdown": true
                 }
@@ -57,7 +62,8 @@ jobs:
                     { "name": "Repository", "value": "${{ github.repository }}" },
                     { "name": "Branch", "value": "${{ github.ref_name }}" },
                     { "name": "Committer", "value": "${{ github.actor }}" },
-                    { "name": "Commit Message", "value": "${{ github.event.head_commit.message }}" }
+                    { "name": "Commit Message", "value": "${{ github.event.head_commit.message }}" },
+                    { "name": "Time", "value": "${{ steps.time.outputs.time }}" }
                   ],
                   "markdown": true
                 }
