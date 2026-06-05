@@ -9,10 +9,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send message to Teams
+      - name: Send formatted message to Teams
         run: |
           curl -H "Content-Type: application/json" \
           -d '{
-            "text": "GitHub PR update in ${{ github.repository }}\n\nTitle: ${{ github.event.pull_request.title }}\nAction: ${{ github.event.action }}\nAuthor: ${{ github.event.pull_request.user.login }}\nURL: ${{ github.event.pull_request.html_url }}"
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "summary": "GitHub Pull Request Update",
+            "themeColor": "0078D7",
+            "title": "🔔 Pull Request Update",
+            "sections": [
+              {
+                "facts": [
+                  {
+                    "name": "Repository",
+                    "value": "${{ github.repository }}"
+                  },
+                  {
+                    "name": "Action",
+                    "value": "${{ github.event.action }}"
+                  },
+                  {
+                    "name": "Title",
+                    "value": "${{ github.event.pull_request.title }}"
+                  },
+                  {
+                    "name": "Author",
+                    "value": "${{ github.event.pull_request.user.login }}"
+                  },
+                  {
+                    "name": "Branch",
+                    "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}"
+                  }
+                ],
+                "markdown": true
+              }
+            ],
+            "potentialAction": [
+              {
+                "@type": "OpenUri",
+                "name": "View Pull Request",
+                "targets": [
+                  {
+                    "os": "default",
+                    "uri": "${{ github.event.pull_request.html_url }}"
+                  }
+                ]
+              }
+            ]
           }' \
           ${{ secrets.TEAMS_WEBHOOK_URL }}
