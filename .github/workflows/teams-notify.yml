@@ -1,8 +1,26 @@
+Here’s your updated workflow with custom notification types for:
+
+* 🚀 Pull Request Created
+* 👀 Review Requested
+* ✅ Pull Request Approved
+* 🎉 Pull Request Merged
+
+It now listens for:
+
+* PR creation
+* Review requests
+* PR reviews/approvals
+* Merge into main
+* Pushes
+
+```yaml id="g9u1qo"
 name: Teams GitHub Notifications
 
 on:
   pull_request:
-    types: [opened, closed, reopened, ready_for_review]
+    types: [opened, closed, reopened, ready_for_review, review_requested]
+  pull_request_review:
+    types: [submitted]
   push:
 
 jobs:
@@ -14,20 +32,42 @@ jobs:
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send message to Teams (PR or Push)
+      - name: Send message to Teams
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+
+          EVENT_NAME="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+
+          TITLE=""
+          COLOR="0078D7"
+
+          # Pull Request Events
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+
+            if [ "$ACTION" = "opened" ]; then
+              TITLE="🚀 Pull Request Created"
+
+            elif [ "$ACTION" = "review_requested" ]; then
+              TITLE="👀 Review Requested"
+
+            elif [ "$ACTION" = "closed" ] && [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+              TITLE="🎉 Pull Request Merged"
+              COLOR="8E44AD"
+
+            else
+              TITLE="🔔 Pull Request Update"
+            fi
+
             payload='{
               "@type": "MessageCard",
               "@context": "http://schema.org/extensions",
-              "summary": "GitHub PR Update",
-              "themeColor": "0078D7",
-              "title": "🔔 Pull Request Update",
+              "summary": "'"$TITLE"'",
+              "themeColor": "'"$COLOR"'",
+              "title": "'"$TITLE"'",
               "sections": [
                 {
                   "facts": [
                     { "name": "Repository", "value": "${{ github.repository }}" },
-                    { "name": "Action", "value": "${{ github.event.action }}" },
                     { "name": "Title", "value": "${{ github.event.pull_request.title }}" },
                     { "name": "Author", "value": "${{ github.event.pull_request.user.login }}" },
                     { "name": "Branch", "value": "${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}" },
@@ -49,13 +89,61 @@ jobs:
                 }
               ]
             }'
-          else
+
+          # Pull Request Review Events
+          elif [ "$EVENT_NAME" = "pull_request_review" ]; then
+
+            if [ "${{ github.event.review.state }}" = "approved" ]; then
+              TITLE="✅ Pull Request Approved"
+              COLOR="2ECC71"
+            else
+              TITLE="💬 Pull Request Review"
+            fi
+
             payload='{
               "@type": "MessageCard",
               "@context": "http://schema.org/extensions",
-              "summary": "GitHub Push Update",
-              "themeColor": "2ECC71",
-              "title": "📦 New Push to Repository",
+              "summary": "'"$TITLE"'",
+              "themeColor": "'"$COLOR"'",
+              "title": "'"$TITLE"'",
+              "sections": [
+                {
+                  "facts": [
+                    { "name": "Repository", "value": "${{ github.repository }}" },
+                    { "name": "PR Title", "value": "${{ github.event.pull_request.title }}" },
+                    { "name": "Reviewer", "value": "${{ github.event.review.user.login }}" },
+                    { "name": "Review State", "value": "${{ github.event.review.state }}" },
+                    { "name": "Time", "value": "${{ steps.time.outputs.time }}" }
+                  ],
+                  "markdown": true
+                }
+              ],
+              "potentialAction": [
+                {
+                  "@type": "OpenUri",
+                  "name": "View Review",
+                  "targets": [
+                    {
+                      "os": "default",
+                      "uri": "${{ github.event.pull_request.html_url }}"
+                    }
+                  ]
+                }
+              ]
+            }'
+
+          # Push Events
+          else
+
+            TITLE="📦 New Push to Repository"
+            COLOR="2ECC71"
+
+            payload='{
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "summary": "'"$TITLE"'",
+              "themeColor": "'"$COLOR"'",
+              "title": "'"$TITLE"'",
               "sections": [
                 {
                   "facts": [
@@ -81,8 +169,10 @@ jobs:
                 }
               ]
             }'
+
           fi
 
           curl -H "Content-Type: application/json" \
           -d "$payload" \
           ${{ secrets.TEAMS_WEBHOOK_URL }}
+```
