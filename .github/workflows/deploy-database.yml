@@ -41,7 +41,7 @@ jobs:
 
 
       #STEP 2.5 - allow permissions
-      - name: Run CreateTable script
+      - name: Run AllowPermissions script
         shell: powershell
         run: |
           sqlcmd `
