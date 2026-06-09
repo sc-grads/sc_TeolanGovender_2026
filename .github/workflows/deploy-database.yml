@@ -24,8 +24,8 @@ jobs:
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -Q "
-            IF DB_ID('Cloud-Tunnels-TG') IS NULL
-            CREATE DATABASE Cloud-Tunnels-TG;
+            IF DB_ID('Cloud_Tunnels_TG') IS NULL
+            CREATE DATABASE Cloud_Tunnels_TG;
             "
 
       # STEP 2 — Create base table
@@ -36,7 +36,7 @@ jobs:
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud-Tunnels-TG" `
+            -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/CreateTable.sql"
 
 
@@ -48,7 +48,7 @@ jobs:
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud-Tunnels-TG" `
+            -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/Permissions.sql"
 
       # STEP 3 — Create logging table
@@ -59,7 +59,7 @@ jobs:
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud-Tunnels-TG" `
+            -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/CreateLoggingTable.sql"
 
       # STEP 4 — Seed data
@@ -70,7 +70,7 @@ jobs:
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud-Tunnels-TG" `
+            -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/SeedData.sql"
 
       # STEP 5 — Log execution
@@ -81,5 +81,5 @@ jobs:
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud-Tunnels-TG" `
+            -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/LogExecution.sql"
