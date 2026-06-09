@@ -1,0 +1,24 @@
+name: Deploy Local SQL Database
+
+on:
+  push:
+    paths:
+      - 'SQL-Project/scripts/**'
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run SQL Query
+        shell: powershell
+        run: |
+          sqlcmd `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "ProjectTestDb" `
+            -Q "SELECT * FROM Users"
