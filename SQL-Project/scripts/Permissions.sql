@@ -1,5 +1,4 @@
 --Permissions.sql
-
 USE Cloud_Tunnels_TG;
 GO
 
