@@ -37,18 +37,6 @@ jobs:
             -d "Cloud_Tunnels_TG" `
             -i "SQL-Project/scripts/CreateTable.sql"
 
-
-      #STEP 2.5 - allow permissions
-      - name: Run AllowPermissions script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "Cloud_Tunnels_TG" `
-            -i "SQL-Project/scripts/Permissions.sql"
-
       # STEP 3 — Create logging table
       - name: Run CreateLoggingTable script
         shell: powershell
