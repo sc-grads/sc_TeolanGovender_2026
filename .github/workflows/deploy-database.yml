@@ -1,6 +1,8 @@
 name: Deploy Local SQL Database
 
 on:
+  workflow_dispatch:
+
   push:
     paths:
       - 'SQL-Project/scripts/**'
