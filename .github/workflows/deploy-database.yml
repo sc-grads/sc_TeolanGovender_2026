@@ -24,7 +24,7 @@ jobs:
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -Q "
-            IF DB_ID('ProjectTestDb') IS NULL
+            IF DB_ID('Cloud-Tunnels-TG') IS NULL
             CREATE DATABASE ProjectTestDb;
             "
 
