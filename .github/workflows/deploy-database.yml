@@ -1,4 +1,4 @@
-name: Deploy Local SQL Database
+name: Deploy SQL Database
 
 on:
   workflow_dispatch:
@@ -15,7 +15,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run SQL Query
+      # STEP 1 — Ensure database exists
+      - name: Ensure Database Exists
+        shell: powershell
+        run: |
+          sqlcmd `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -Q "
+            IF DB_ID('ProjectTestDb') IS NULL
+            CREATE DATABASE ProjectTestDb;
+            "
+
+      # STEP 2 — Create base table
+      - name: Run CreateTable script
         shell: powershell
         run: |
           sqlcmd `
@@ -23,4 +37,37 @@ jobs:
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "ProjectTestDb" `
-            -Q "SELECT * FROM Users"
+            -i "SQL-Project/scripts/CreateTable.sql"
+
+      # STEP 3 — Create logging table
+      - name: Run CreateLoggingTable script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "ProjectTestDb" `
+            -i "SQL-Project/scripts/CreateLoggingTable.sql"
+
+      # STEP 4 — Seed data
+      - name: Run SeedData script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "ProjectTestDb" `
+            -i "SQL-Project/scripts/SeedData.sql"
+
+      # STEP 5 — Log execution
+      - name: Run Execution Log script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "ProjectTestDb" `
+            -i "SQL-Project/scripts/LogExecution.sql"

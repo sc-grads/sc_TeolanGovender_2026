@@ -1,0 +1,7 @@
+IF OBJECT_ID('Users') IS NULL
+BEGIN
+    CREATE TABLE Users (
+        Id INT PRIMARY KEY IDENTITY,
+        Name NVARCHAR(100)
+    );
+END
