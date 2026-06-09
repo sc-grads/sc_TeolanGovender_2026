@@ -16,17 +16,15 @@ jobs:
         uses: actions/checkout@v4
 
       # STEP 1 — Ensure database exists
-      - name: Ensure Database Exists
+      - name: Create Database
         shell: powershell
         run: |
           sqlcmd `
+            -b `
             -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -Q "
-            IF DB_ID('Cloud_Tunnels_TG') IS NULL
-            CREATE DATABASE Cloud_Tunnels_TG;
-            "
+            -i "SQL-Project/scripts/CreateDatabase.sql"
 
       # STEP 2 — Create base table
       - name: Run CreateTable script
