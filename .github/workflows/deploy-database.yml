@@ -15,9 +15,9 @@ jobs:
     uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
-      server: ${{ secrets.SQL_SERVER }}
-      port: ${{ secrets.SQL_PORT }}
-      username: ${{ secrets.SQL_USERNAME }}
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
+      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
 
@@ -65,7 +65,47 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-  # JOB 4 — MANUAL APPROVAL GATE
+# JOB 3 — APPROVAL NOTIFICATION
+  approval-notify:
+    name: Notify Approval Required
+    needs: notify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Create payload
+        run: |
+          cat <<EOF > payload.json
+          {
+            "@type":"MessageCard",
+            "@context":"http://schema.org/extensions",
+            "themeColor":"FFA500",
+            "title":"⚠️ Approval Required for Partner Deployment",
+            "summary":"Manual approval needed",
+            "sections":[
+              {
+                "facts":[
+                  {"name":"Repository","value":"${{ github.repository }}"},
+                  {"name":"Triggered By","value":"${{ github.actor }}"},
+                  {"name":"Database","value":"Cloud_Tunnels_TG"},
+                  {"name":"Time","value":"${{ steps.time.outputs.time }}"}
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
+
+# JOB 4 — MANUAL APPROVAL GATE
   approval:
     name: Manual Approval
     needs: approval-notify
@@ -77,56 +117,25 @@ jobs:
         run: echo "Waiting for approval..."
 
 
-  # JOB 5 — PARTNER DEPLOYMENT
+# JOB 5 — PARTNER DEPLOYMENT
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
-    runs-on: windows-latest
 
-    env:
-      DB_NAME: Cloud_Tunnels_TG
+    uses: ./.github/workflows/deploy-sql-template.yml
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    with:
+      server: ${{ vars.PARTNER_SQL_SERVER }}
+      port: ${{ vars.PARTNER_SQL_PORT }}
+      username: ${{ vars.PARTNER_SQL_USERNAME }}
+      database: Cloud_Tunnels_TG
+      scripts_path: SQL-Project/scripts
 
-      - name: Create Partner Database
-        shell: powershell
-        run: |
-          sqlcmd -b -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-                 -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-                 -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-                 -i "SQL-Project/scripts/CreateDatabase.sql"
-
-      - name: Run Partner Scripts
-        shell: powershell
-        run: |
-          sqlcmd -b -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-                 -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-                 -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-                 -d "${{ env.DB_NAME }}" `
-                 -i "SQL-Project/scripts/CreateTable.sql"
-
-          sqlcmd -b -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-                 -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-                 -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-                 -d "${{ env.DB_NAME }}" `
-                 -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-          sqlcmd -b -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-                 -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-                 -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-                 -d "${{ env.DB_NAME }}" `
-                 -i "SQL-Project/scripts/SeedData.sql"
-
-          sqlcmd -b -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-                 -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-                 -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-                 -d "${{ env.DB_NAME }}" `
-                 -i "SQL-Project/scripts/LogExecution.sql"
+    secrets:
+      sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
 
 
-  # JOB 6 — PARTNER SUCCESS NOTIFICATION
+# JOB 6 — PARTNER SUCCESS NOTIFICATION
   partner-notify:
     name: Notify Partner Deployment Success
     needs: deploy-partner
@@ -150,21 +159,9 @@ jobs:
               {
                 "facts":[
                   {"name":"Repository","value":"${{ github.repository }}"},
-                  {"name":"Database","value":"${{ env.DB_NAME }}"},
+                  {"name":"Database","value":"Cloud_Tunnels_TG"},
                   {"name":"Status","value":"SUCCESS"},
                   {"name":"Time","value":"${{ steps.time.outputs.time }}"}
-                ]
-              }
-            ],
-            "potentialAction":[
-              {
-                "@type":"OpenUri",
-                "name":"View Workflow Run",
-                "targets":[
-                  {
-                    "os":"default",
-                    "uri":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                  }
                 ]
               }
             ]
