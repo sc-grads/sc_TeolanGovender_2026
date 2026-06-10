@@ -13,7 +13,7 @@ jobs:
   deploy-local:
     name: Deploy to Local SQL Server
 
-    uses: ./.github/workflows/reusable-sql-deploy.yml
+    uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
       database: Cloud_Tunnels_TG
