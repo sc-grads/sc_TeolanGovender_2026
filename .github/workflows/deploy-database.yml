@@ -81,18 +81,29 @@ jobs:
   notify:
     name: Notify Teams
     needs: deploy-local
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Send Teams Notification
-        shell: bash
+      - name: Get Current Time
+        id: time
         run: |
+          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Build Payload
+        id: payload
+        run: |
+          echo "{\"@type\":\"MessageCard\",\"@context\":\"http://schema.org/extensions\",\"themeColor\":\"0078D7\",\"title\":\"🗄️ Database Deployment Completed\",\"summary\":\"SQL Deployment Successful\",\"sections\":[{\"facts\":[{\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},{\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},{\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},{\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},{\"name\":\"Status\",\"value\":\"SUCCESS\"},{\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}]}],\"potentialAction\":[{\"@type\":\"OpenUri\",\"name\":\"View Workflow Run\",\"targets\":[{\"os\":\"default\",\"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}]}" > payload.json
+
+      - name: Send Notification to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          cat payload.json
+
           curl -X POST \
-          -H "Content-Type: application/json" \
-          -d '{
-            "text": "🚀 Local SQL deployment completed successfully. Approval required for partner deployment."
-          }' \
-          "${{ secrets.TEAMS_WEBHOOK_URL }}"
+            -H "Content-Type: application/json" \
+            -d @payload.json \
+            "$TEAMS_WEBHOOK_URL"
 
 
   approval:
