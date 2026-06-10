@@ -120,13 +120,12 @@ jobs:
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
-
     uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
-      server: ${{ secrets.PARTNER_SQL_SERVER }}
-      port: ${{ secrets.PARTNER_SQL_PORT }}
-      username: ${{ secrets.PARTNER_SQL_USERNAME }}
+      server: ${{ vars.PARTNER_SQL_SERVER }}
+      port: ${{ vars.PARTNER_SQL_PORT }}
+      username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
 
