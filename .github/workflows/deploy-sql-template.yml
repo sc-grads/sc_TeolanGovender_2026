@@ -1,0 +1,77 @@
+name: Reusable SQL Deploy
+
+on:
+  workflow_call:
+    inputs:
+      server:
+        required: true
+        type: string
+      port:
+        required: true
+        type: string
+      username:
+        required: true
+        type: string
+      database:
+        required: true
+        type: string
+      scripts_path:
+        required: true
+        type: string
+
+    secrets:
+      sql_password:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Database
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ inputs.server }},${{ inputs.port }}" `
+            -U "${{ inputs.username }}" `
+            -P "${{ secrets.sql_password }}" `
+            -Q "IF DB_ID('${{ inputs.database }}') IS NULL CREATE DATABASE ${{ inputs.database }};"
+
+      - name: Run SQL Scripts
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ inputs.server }},${{ inputs.port }}" `
+            -U "${{ inputs.username }}" `
+            -P "${{ secrets.sql_password }}" `
+            -d "${{ inputs.database }}" `
+            -i "${{ inputs.scripts_path }}/CreateTable.sql"
+
+          sqlcmd `
+            -b `
+            -S "${{ inputs.server }},${{ inputs.port }}" `
+            -U "${{ inputs.username }}" `
+            -P "${{ secrets.sql_password }}" `
+            -d "${{ inputs.database }}" `
+            -i "${{ inputs.scripts_path }}/CreateLoggingTable.sql"
+
+          sqlcmd `
+            -b `
+            -S "${{ inputs.server }},${{ inputs.port }}" `
+            -U "${{ inputs.username }}" `
+            -P "${{ secrets.sql_password }}" `
+            -d "${{ inputs.database }}" `
+            -i "${{ inputs.scripts_path }}/SeedData.sql"
+
+          sqlcmd `
+            -b `
+            -S "${{ inputs.server }},${{ inputs.port }}" `
+            -U "${{ inputs.username }}" `
+            -P "${{ secrets.sql_password }}" `
+            -d "${{ inputs.database }}" `
+            -i "${{ inputs.scripts_path }}/LogExecution.sql"
