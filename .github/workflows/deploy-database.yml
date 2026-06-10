@@ -16,13 +16,13 @@ jobs:
     uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
+      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
 
     secrets:
-      server: ${{ secrets.SQL_SERVER }}
-      port: ${{ secrets.SQL_PORT }}
-      username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
 
 
@@ -156,13 +156,13 @@ jobs:
     uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
+      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
 
     secrets:
-      server: ${{ secrets.PARTNER_SQL_SERVER }}
-      port: ${{ secrets.PARTNER_SQL_PORT }}
-      username: ${{ secrets.PARTNER_SQL_USERNAME }}
       sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
 
 
