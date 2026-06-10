@@ -1,215 +1,181 @@
 name: Deploy SQL Database
 
 on:
-workflow_dispatch:
+  workflow_dispatch:
 
-push:
-paths:
-- 'SQL-Project/scripts/**'
+  push:
+    paths:
+      - 'SQL-Project/scripts/**'
 
 jobs:
 
-# JOB 1 — DEPLOY TO LOCAL SQL SERVER
+  deploy-local:
+    name: Deploy to Local SQL Server
+    runs-on: windows-latest
 
-deploy-local:
-name: Deploy to Local SQL Server
-runs-on: windows-latest
+    env:
+      DB_NAME: Cloud_Tunnels_TG
 
-```
-env:
-  DB_NAME: Cloud_Tunnels_TG
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+      - name: Create Database
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -i "SQL-Project/scripts/CreateDatabase.sql"
 
-  # STEP 1 — Ensure database exists
-  - name: Create Database
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-        -U "${{ secrets.SQL_USERNAME }}" `
-        -P "${{ secrets.SQL_PASSWORD }}" `
-        -i "SQL-Project/scripts/CreateDatabase.sql"
+      - name: Run CreateTable script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/CreateTable.sql"
 
-  # STEP 2 — Create base table
-  - name: Run CreateTable script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-        -U "${{ secrets.SQL_USERNAME }}" `
-        -P "${{ secrets.SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/CreateTable.sql"
+      - name: Run CreateLoggingTable script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/CreateLoggingTable.sql"
 
-  # STEP 3 — Create logging table
-  - name: Run CreateLoggingTable script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-        -U "${{ secrets.SQL_USERNAME }}" `
-        -P "${{ secrets.SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/CreateLoggingTable.sql"
+      - name: Run SeedData script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/SeedData.sql"
 
-  # STEP 4 — Seed data
-  - name: Run SeedData script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-        -U "${{ secrets.SQL_USERNAME }}" `
-        -P "${{ secrets.SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/SeedData.sql"
+      - name: Run Execution Log script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/LogExecution.sql"
 
-  # STEP 5 — Log execution
-  - name: Run Execution Log script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-        -U "${{ secrets.SQL_USERNAME }}" `
-        -P "${{ secrets.SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/LogExecution.sql"
+      - name: Local Deployment Complete
+        run: echo "Successfully deployed to local SQL Server."
 
-  - name: Local Deployment Complete
-    run: |
-      echo "Successfully deployed to local SQL Server."
-```
 
-# JOB 2 — SEND TEAMS NOTIFICATION
+  notify:
+    name: Notify Teams
+    needs: deploy-local
+    runs-on: windows-latest
 
-notify:
-name: Notify Teams
-needs: deploy-local
-runs-on: windows-latest
+    steps:
+      - name: Send Teams Notification
+        shell: powershell
+        run: |
+          $body = @{
+            text = "Local database deployment completed successfully. Approval is required before partner deployment."
+          } | ConvertTo-Json
 
-```
-steps:
-  - name: Send Teams Notification
-    shell: powershell
-    run: |
-      $body = @{
-        text = "Local database deployment completed successfully. Approval is required before deploying to the accountability partner SQL Server."
-      } | ConvertTo-Json
+          Invoke-RestMethod `
+            -Method Post `
+            -ContentType "application/json" `
+            -Body $body `
+            -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}"
 
-      Invoke-RestMethod `
-        -Method Post `
-        -ContentType 'Application/Json' `
-        -Body $body `
-        -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}"
-```
 
-# ==========================================
+  approval:
+    name: Manual Approval
+    needs: notify
+    runs-on: windows-latest
 
-# JOB 3 — MANUAL APPROVAL
+    environment:
+      name: production
 
-# ==========================================
+    steps:
+      - name: Await Approval
+        run: echo "Waiting for manual approval before partner deployment."
 
-approval:
-name: Manual Approval
-needs: notify
-runs-on: windows-latest
 
-```
-environment:
-  name: production
+  deploy-partner:
+    name: Deploy to Accountability Partner
+    needs: approval
+    runs-on: windows-latest
 
-steps:
-  - name: Await Approval
-    run: |
-      echo "Waiting for manual approval before partner deployment."
-```
+    env:
+      DB_NAME: Cloud_Tunnels_TG
 
-# ==========================================
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-# JOB 4 — DEPLOY TO PARTNER SQL SERVER
+      - name: Create Partner Database
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
+            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
+            -i "SQL-Project/scripts/CreateDatabase.sql"
 
-# ==========================================
+      - name: Run Partner CreateTable script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
+            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/CreateTable.sql"
 
-deploy-partner:
-name: Deploy to Accountability Partner
-needs: approval
-runs-on: windows-latest
+      - name: Run Partner CreateLoggingTable script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
+            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/CreateLoggingTable.sql"
 
-```
-env:
-  DB_NAME: Cloud_Tunnels_TG
+      - name: Run Partner SeedData script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
+            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/SeedData.sql"
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+      - name: Run Partner LogExecution script
+        shell: powershell
+        run: |
+          sqlcmd `
+            -b `
+            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
+            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
+            -d "${{ env.DB_NAME }}" `
+            -i "SQL-Project/scripts/LogExecution.sql"
 
-  # STEP 1 — Ensure database exists
-  - name: Create Partner Database
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-        -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-        -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-        -i "SQL-Project/scripts/CreateDatabase.sql"
-
-  # STEP 2 — Create base table
-  - name: Run Partner CreateTable script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-        -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-        -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/CreateTable.sql"
-
-  # STEP 3 — Create logging table
-  - name: Run Partner CreateLoggingTable script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-        -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-        -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-  # STEP 4 — Seed data
-  - name: Run Partner SeedData script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-        -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-        -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/SeedData.sql"
-
-  # STEP 5 — Log execution
-  - name: Run Partner LogExecution script
-    shell: powershell
-    run: |
-      sqlcmd `
-        -b `
-        -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-        -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-        -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-        -d "${{ env.DB_NAME }}" `
-        -i "SQL-Project/scripts/LogExecution.sql"
-
-  - name: Partner Deployment Complete
-    run: |
-      echo "Successfully deployed to accountability partner SQL Server."
-```
+      - name: Partner Deployment Complete
+        run: echo "Successfully deployed to accountability partner SQL Server."
