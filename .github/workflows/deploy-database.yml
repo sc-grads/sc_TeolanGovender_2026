@@ -2,21 +2,20 @@ name: Deploy SQL Database
 
 on:
   workflow_dispatch:
-
   push:
     paths:
       - 'SQL-Project/scripts/**'
 
-jobs:
+env:
+  DB_NAME: Cloud_Tunnels_TG
 
+
+jobs:
 
 # JOB 1 — LOCAL DEPLOYMENT
   deploy-local:
     name: Deploy to Local SQL Server
     runs-on: windows-latest
-
-    env:
-      DB_NAME: Cloud_Tunnels_TG
 
     steps:
       - name: Checkout repository
@@ -27,17 +26,17 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
-            -i "SQL-Project/scripts/CreateDatabase.sql"
+            -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
 
       - name: Run CreateTable script
         shell: powershell
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -48,7 +47,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -59,7 +58,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -70,14 +69,11 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
+            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
             -i "SQL-Project/scripts/LogExecution.sql"
-
-      - name: Local Deployment Complete
-        run: echo "Successfully deployed to local SQL Server."
 
 
 # JOB 2 — LOCAL SUCCESS NOTIFICATION
@@ -89,8 +85,7 @@ jobs:
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
       - name: Send Success Notification
         run: |
@@ -109,18 +104,6 @@ jobs:
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
-            ],
-            \"potentialAction\":[
-              {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
-                ]
-              }
             ]
           }" > payload.json
 
@@ -128,10 +111,7 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
 # JOB 3 — APPROVAL NOTIFICATION
@@ -143,8 +123,7 @@ jobs:
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
       - name: Send Approval Request
         run: |
@@ -163,18 +142,6 @@ jobs:
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
-            ],
-            \"potentialAction\":[
-              {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
-                ]
-              }
             ]
           }" > payload.json
 
@@ -182,10 +149,7 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
 # JOB 4 — MANUAL APPROVAL GATE
@@ -193,7 +157,6 @@ jobs:
     name: Manual Approval
     needs: approval-notify
     runs-on: windows-latest
-
     environment:
       name: production
 
@@ -208,9 +171,6 @@ jobs:
     needs: approval
     runs-on: windows-latest
 
-    env:
-      DB_NAME: Cloud_Tunnels_TG
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -220,17 +180,17 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
             -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -i "SQL-Project/scripts/CreateDatabase.sql"
+            -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
 
       - name: Run Partner Scripts
         shell: powershell
         run: |
           sqlcmd `
             -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
             -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -238,7 +198,7 @@ jobs:
 
           sqlcmd `
             -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
             -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -246,7 +206,7 @@ jobs:
 
           sqlcmd `
             -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
             -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -254,7 +214,7 @@ jobs:
 
           sqlcmd `
             -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
+            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
             -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -270,8 +230,7 @@ jobs:
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
       - name: Send Success Notification
         run: |
@@ -290,18 +249,6 @@ jobs:
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
-            ],
-            \"potentialAction\":[
-              {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
-                ]
-              }
             ]
           }" > payload.json
 
@@ -309,7 +256,4 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
