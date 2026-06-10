@@ -153,7 +153,7 @@ jobs:
     name: Deploy to Accountability Partner
     needs: approval
 
-    uses: ./.github/workflows/reusable-sql-deploy.yml
+    uses: ./.github/workflows/deploy-sql-template.yml
 
     with:
       database: Cloud_Tunnels_TG
