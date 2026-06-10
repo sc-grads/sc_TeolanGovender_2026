@@ -1,1 +1,15 @@
 DatabaseAdministration/CourseFolders/
+
+.vs/
+*.vsidx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+bin/
+obj/
+
+*.cache
+*.log
+*.tmp
