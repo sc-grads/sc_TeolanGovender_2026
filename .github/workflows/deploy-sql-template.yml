@@ -34,44 +34,34 @@ jobs:
       - name: Create Database
         shell: powershell
         run: |
-          sqlcmd `
-            -b `
-            -S "${{ inputs.server }},${{ inputs.port }}" `
-            -U "${{ inputs.username }}" `
-            -P "${{ secrets.sql_password }}" `
-            -Q "IF DB_ID('${{ inputs.database }}') IS NULL CREATE DATABASE ${{ inputs.database }};"
+          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
+                 -U "${{ inputs.username }}" `
+                 -P "${{ secrets.sql_password }}" `
+                 -Q "IF DB_ID('${{ inputs.database }}') IS NULL CREATE DATABASE ${{ inputs.database }};"
 
       - name: Run SQL Scripts
         shell: powershell
         run: |
-          sqlcmd `
-            -b `
-            -S "${{ inputs.server }},${{ inputs.port }}" `
-            -U "${{ inputs.username }}" `
-            -P "${{ secrets.sql_password }}" `
-            -d "${{ inputs.database }}" `
-            -i "${{ inputs.scripts_path }}/CreateTable.sql"
+          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
+                 -U "${{ inputs.username }}" `
+                 -P "${{ secrets.sql_password }}" `
+                 -d "${{ inputs.database }}" `
+                 -i "${{ inputs.scripts_path }}/CreateTable.sql"
 
-          sqlcmd `
-            -b `
-            -S "${{ inputs.server }},${{ inputs.port }}" `
-            -U "${{ inputs.username }}" `
-            -P "${{ secrets.sql_password }}" `
-            -d "${{ inputs.database }}" `
-            -i "${{ inputs.scripts_path }}/CreateLoggingTable.sql"
+          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
+                 -U "${{ inputs.username }}" `
+                 -P "${{ secrets.sql_password }}" `
+                 -d "${{ inputs.database }}" `
+                 -i "${{ inputs.scripts_path }}/CreateLoggingTable.sql"
 
-          sqlcmd `
-            -b `
-            -S "${{ inputs.server }},${{ inputs.port }}" `
-            -U "${{ inputs.username }}" `
-            -P "${{ secrets.sql_password }}" `
-            -d "${{ inputs.database }}" `
-            -i "${{ inputs.scripts_path }}/SeedData.sql"
+          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
+                 -U "${{ inputs.username }}" `
+                 -P "${{ secrets.sql_password }}" `
+                 -d "${{ inputs.database }}" `
+                 -i "${{ inputs.scripts_path }}/SeedData.sql"
 
-          sqlcmd `
-            -b `
-            -S "${{ inputs.server }},${{ inputs.port }}" `
-            -U "${{ inputs.username }}" `
-            -P "${{ secrets.sql_password }}" `
-            -d "${{ inputs.database }}" `
-            -i "${{ inputs.scripts_path }}/LogExecution.sql"
+          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
+                 -U "${{ inputs.username }}" `
+                 -P "${{ secrets.sql_password }}" `
+                 -d "${{ inputs.database }}" `
+                 -i "${{ inputs.scripts_path }}/LogExecution.sql"
