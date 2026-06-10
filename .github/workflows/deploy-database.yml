@@ -85,17 +85,14 @@ jobs:
 
     steps:
       - name: Send Teams Notification
-        shell: powershell
+        shell: bash
         run: |
-          $body = @{
-            text = "Local database deployment completed successfully. Approval is required before partner deployment."
-          } | ConvertTo-Json
-
-          Invoke-RestMethod `
-            -Method Post `
-            -ContentType "application/json" `
-            -Body $body `
-            -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}"
+          curl -X POST \
+          -H "Content-Type: application/json" \
+          -d '{
+            "text": "🚀 Local SQL deployment completed successfully. Approval required for partner deployment."
+          }' \
+          "${{ secrets.TEAMS_WEBHOOK_URL }}"
 
 
   approval:
