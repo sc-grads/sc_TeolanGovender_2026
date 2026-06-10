@@ -31,37 +31,46 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
+      # CREATE DATABASE
       - name: Create Database
         shell: powershell
         run: |
-          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
-                 -U "${{ inputs.username }}" `
-                 -P "${{ secrets.sql_password }}" `
-                 -Q "IF DB_ID('${{ inputs.database }}') IS NULL CREATE DATABASE ${{ inputs.database }};"
+          $server = "${{ inputs.server }}"
+          $port = "${{ inputs.port }}"
+          $user = "${{ inputs.username }}"
+          $pass = "${{ secrets.sql_password }}"
+          $db = "${{ inputs.database }}"
 
+          if ([string]::IsNullOrWhiteSpace($server) -or
+              [string]::IsNullOrWhiteSpace($port) -or
+              [string]::IsNullOrWhiteSpace($user) -or
+              [string]::IsNullOrWhiteSpace($pass)) {
+              throw "Missing required SQL connection inputs"
+          }
+
+          sqlcmd -b `
+            -S "$server,$port" `
+            -U "$user" `
+            -P "$pass" `
+            -Q "IF DB_ID('$db') IS NULL CREATE DATABASE $db;"
+
+
+      # RUN SCRIPTS
       - name: Run SQL Scripts
         shell: powershell
         run: |
-          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
-                 -U "${{ inputs.username }}" `
-                 -P "${{ secrets.sql_password }}" `
-                 -d "${{ inputs.database }}" `
-                 -i "${{ inputs.scripts_path }}/CreateTable.sql"
+          $server = "${{ inputs.server }}"
+          $port = "${{ inputs.port }}"
+          $user = "${{ inputs.username }}"
+          $pass = "${{ secrets.sql_password }}"
+          $db = "${{ inputs.database }}"
+          $path = "${{ inputs.scripts_path }}"
 
-          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
-                 -U "${{ inputs.username }}" `
-                 -P "${{ secrets.sql_password }}" `
-                 -d "${{ inputs.database }}" `
-                 -i "${{ inputs.scripts_path }}/CreateLoggingTable.sql"
+          sqlcmd -b -S "$server,$port" -U "$user" -P "$pass" -d "$db" -i "$path/CreateTable.sql"
 
-          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
-                 -U "${{ inputs.username }}" `
-                 -P "${{ secrets.sql_password }}" `
-                 -d "${{ inputs.database }}" `
-                 -i "${{ inputs.scripts_path }}/SeedData.sql"
+          sqlcmd -b -S "$server,$port" -U "$user" -P "$pass" -d "$db" -i "$path/CreateLoggingTable.sql"
 
-          sqlcmd -b -S "${{ inputs.server }},${{ inputs.port }}" `
-                 -U "${{ inputs.username }}" `
-                 -P "${{ secrets.sql_password }}" `
-                 -d "${{ inputs.database }}" `
-                 -i "${{ inputs.scripts_path }}/LogExecution.sql"
+          sqlcmd -b -S "$server,$port" -U "$user" -P "$pass" -d "$db" -i "$path/SeedData.sql"
+
+          sqlcmd -b -S "$server,$port" -U "$user" -P "$pass" -d "$db" -i "$path/LogExecution.sql"
