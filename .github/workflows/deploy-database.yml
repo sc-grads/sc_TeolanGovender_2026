@@ -14,18 +14,19 @@ jobs:
   deploy-local:
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
+      environment_name: staging
       server: ${{ vars.SQL_SERVER }}
       port: ${{ vars.SQL_PORT }}
       username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-      environment_name: staging
     secrets: inherit
 
 # =========================
-# LOCAL NOTIFICATION
+# LOCAL SUCCESS NOTIFICATION
 # =========================
   notify:
+    name: Notify Teams (Local Success)
     needs: deploy-local
     runs-on: ubuntu-latest
 
@@ -64,6 +65,7 @@ jobs:
 # APPROVAL NOTIFICATION
 # =========================
   approval-notify:
+    name: Notify Approval Required
     needs: notify
     runs-on: ubuntu-latest
 
@@ -102,9 +104,11 @@ jobs:
 # APPROVAL GATE
 # =========================
   approval:
+    name: Manual Approval
     needs: approval-notify
     runs-on: windows-latest
-    environment: production
+    environment:
+      name: production
 
     steps:
       - name: Await Approval
@@ -115,19 +119,21 @@ jobs:
 # =========================
   deploy-partner:
     uses: ./.github/workflows/deploy-sql-template.yml
+    needs: approval
     with:
+      environment_name: production
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
       username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-      environment_name: production
     secrets: inherit
 
 # =========================
-# PARTNER NOTIFICATION
+# PARTNER SUCCESS NOTIFICATION
 # =========================
   partner-notify:
+    name: Notify Partner Deployment Success
     needs: deploy-partner
     runs-on: ubuntu-latest
 
