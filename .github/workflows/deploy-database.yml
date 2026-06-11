@@ -79,7 +79,7 @@ jobs:
             -i "SQL-Project/scripts/LogExecution.sql"
 
 
-# JOB 2 — LOCAL SUCCESS NOTIFICATION (UNCHANGED)
+# JOB 2 — LOCAL SUCCESS NOTIFICATION
   notify:
     name: Notify Teams (Local Success)
     needs: deploy-local
@@ -117,7 +117,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 3 — APPROVAL NOTIFICATION (UNCHANGED)
+# JOB 3 — APPROVAL NOTIFICATION
   approval-notify:
     name: Notify Approval Required
     needs: notify
@@ -167,7 +167,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 4 — MANUAL APPROVAL GATE (UNCHANGED)
+# JOB 4 — MANUAL APPROVAL GATE
   approval:
     name: Manual Approval
     needs: approval-notify
@@ -180,7 +180,7 @@ jobs:
         run: echo "Waiting for approval..."
 
 
-# JOB 5 — PARTNER DEPLOYMENT (UNCHANGED)
+# JOB 5 — PARTNER DEPLOYMENT
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
@@ -236,7 +236,7 @@ jobs:
             -i "SQL-Project/scripts/LogExecution.sql"
 
 
-# JOB 6 — PARTNER SUCCESS NOTIFICATION (UNCHANGED)
+# JOB 6 — PARTNER SUCCESS NOTIFICATION
   partner-notify:
     name: Notify Partner Deployment Success
     needs: deploy-partner
