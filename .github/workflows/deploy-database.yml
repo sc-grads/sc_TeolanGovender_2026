@@ -26,6 +26,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
+            -C `
             -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
