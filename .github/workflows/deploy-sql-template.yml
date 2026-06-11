@@ -6,21 +6,29 @@ on:
       server:
         required: true
         type: string
+
       port:
         required: true
         type: string
-      username:
-        required: true
-        type: string
+
       database:
         required: true
         type: string
+
       scripts_path:
         required: true
         type: string
+
       environment_name:
         required: true
         type: string
+
+    secrets:
+      username:
+        required: true
+
+      sql_password:
+        required: true
 
 jobs:
   deploy:
