@@ -14,12 +14,11 @@ jobs:
   deploy-local:
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
-      environment_name: staging
       server: ${{ vars.SQL_SERVER }}
       port: ${{ vars.SQL_PORT }}
-      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
+      environment_name: staging
     secrets: inherit
 
 # =========================
@@ -118,15 +117,14 @@ jobs:
 # PARTNER DEPLOYMENT
 # =========================
   deploy-partner:
-    uses: ./.github/workflows/deploy-sql-template.yml
     needs: approval
+    uses: ./.github/workflows/deploy-sql-template.yml
     with:
-      environment_name: production
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
-      username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
+      environment_name: production
     secrets: inherit
 
 # =========================
