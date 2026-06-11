@@ -18,25 +18,20 @@ on:
       scripts_path:
         required: true
         type: string
-      environment:
-        required: false
-        type: string
 
     secrets:
       sql_password:
         required: true
 
-
 jobs:
   deploy:
     runs-on: windows-latest
-    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      #FAIL FAST CHECK (prevents empty sqlcmd args)
+      # FAIL FAST CHECK
       - name: Validate Inputs
         shell: powershell
         run: |
