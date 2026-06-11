@@ -23,12 +23,6 @@ on:
         required: true
         type: string
 
-    secrets:
-      username:
-        required: true
-
-      sql_password:
-        required: true
 
 jobs:
   deploy:
@@ -53,8 +47,8 @@ jobs:
         shell: powershell
         run: |
           $server = "${{ inputs.server }},${{ inputs.port }}"
-          $user = "${{ secrets.username }}"
-          $pass = "${{ secrets.sql_password }}"
+          $user = "${{ secrets.SQL_USERNAME }}"
+          $pass = "${{ secrets.SQL_PASSWORD }}
           $db = "${{ inputs.database }}"
 
           sqlcmd `
@@ -68,8 +62,8 @@ jobs:
         shell: powershell
         run: |
           $server = "${{ inputs.server }},${{ inputs.port }}"
-          $user = "${{ secrets.username }}"
-          $pass = "${{ secrets.sql_password }}"
+          $user = "${{ secrets.SQL_USERNAME }}"
+          $pass = "${{ secrets.SQL_PASSWORD }}"
           $db = "${{ inputs.database }}"
           $path = "${{ inputs.scripts_path }}"
 
