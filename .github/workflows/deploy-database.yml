@@ -94,20 +94,16 @@ jobs:
             ],
             "potentialAction":[
               {
-                "@type":"OpenUri",
-                "name":"View Repo / Workflow Run",
-                "targets":[
-                  {
-                    "os":"default",
-                    "uri":"${{ github.server_url }}/${{ github.repository }}"
-                  },
-                  {
-                    "os":"default",
-                    "uri":"${{ github.server_url }}/${{ github.repository }}/actions"
-                  }
-                ]
-              }
-            ]
+                  "@type":"OpenUri",
+                  "name":"Approve Deployment",
+                  "targets":[
+                    {
+                      "os":"default",
+                      "uri":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
           }
           EOF
 
