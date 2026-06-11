@@ -119,7 +119,7 @@ jobs:
     with:
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
-      username: ${{ secrets.PARTNER_SQL_USERNAME }}
+      username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
     secrets:
