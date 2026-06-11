@@ -114,7 +114,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 3 — APPROVAL NOTIFICATION
+  # JOB 3 — APPROVAL NOTIFICATION
   approval-notify:
     name: Notify Approval Required
     needs: notify
@@ -134,15 +134,27 @@ jobs:
             \"title\":\"⚠️ Approval Required for Partner Deployment\",
             \"summary\":\"Manual approval needed\",
             \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
+            {
+              \"facts\":[
+                {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
+                {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+              ]
+            }
+          ],
+          \"potentialAction\":[
+            {
+              \"@type\":\"OpenUri\",
+              \"name\":\"🔍 View Workflow Run\",
+              \"targets\":[
+                {
+                  \"os\":\"default\",
+                  \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+                }
+              ]
+            }
+          ]
           }" > payload.json
 
       - name: Send to Teams
