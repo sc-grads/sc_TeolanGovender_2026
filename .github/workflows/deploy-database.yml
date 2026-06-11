@@ -28,8 +28,8 @@ jobs:
             -b `
             -C `
             -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
-            -U "${{ secrets.Local_SQL_USERNAME }}" `
-            -P "${{ secrets.Local_SQL_PASSWORD }}" `
+            -U "${{ secrets.SQL_USERNAME }}" `
+            -P "${{ secrets.SQL_PASSWORD }}" `
             -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
 
       - name: Run CreateTable script
