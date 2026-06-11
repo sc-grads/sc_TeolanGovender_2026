@@ -32,7 +32,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ FAIL FAST CHECK (prevents empty sqlcmd args)
+      #FAIL FAST CHECK (prevents empty sqlcmd args)
       - name: Validate Inputs
         shell: powershell
         run: |
