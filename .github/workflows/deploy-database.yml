@@ -126,6 +126,7 @@ jobs:
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
       environment_name: production
+
     secrets:
       sql_username: ${{ secrets.PARTNER_SQL_USERNAME }}
       sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
