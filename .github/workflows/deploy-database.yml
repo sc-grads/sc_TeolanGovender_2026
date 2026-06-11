@@ -19,8 +19,8 @@ jobs:
       username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-    secrets:
-      sql_password: ${{ secrets.SQL_PASSWORD }}
+      environment_name: staging
+    secrets: inherit
 
 # =========================
 # LOCAL NOTIFICATION
@@ -114,7 +114,6 @@ jobs:
 # PARTNER DEPLOYMENT
 # =========================
   deploy-partner:
-    needs: approval
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
       server: ${{ vars.PARTNER_SQL_SERVER }}
@@ -122,8 +121,8 @@ jobs:
       username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-    secrets:
-      sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
+      environment_name: production
+    secrets: inherit
 
 # =========================
 # PARTNER NOTIFICATION
