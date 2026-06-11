@@ -1,4 +1,4 @@
-name: Deploy SQL Database
+name: SQL Database Deployment
 
 on:
   workflow_dispatch:
@@ -9,118 +9,50 @@ on:
 
 jobs:
 
+# STAGING DEPLOYMENT
+  deploy-staging:
+    name: Deploy to Staging
 
-# JOB 1 — LOCAL DEPLOYMENT
-  deploy-local:
-    name: Deploy to Local SQL Server
-    runs-on: windows-latest
+    uses: ./.github/workflows/deploy-sql-template.yml
 
-    env:
-      DB_NAME: Cloud_Tunnels_TG
+    with:
+      database: Cloud_Tunnels_TG
+      scripts_path: SQL-Project/scripts
+      environment_name: staging
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
-      - name: Create Database
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -i "SQL-Project/scripts/CreateDatabase.sql"
-
-      - name: Run CreateTable script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateTable.sql"
-
-      - name: Run CreateLoggingTable script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-      - name: Run SeedData script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/SeedData.sql"
-
-      - name: Run Execution Log script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.SQL_SERVER }},${{ secrets.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/LogExecution.sql"
-
-      - name: Local Deployment Complete
-        run: echo "Successfully deployed to local SQL Server."
-
-
-# JOB 2 — LOCAL SUCCESS NOTIFICATION
-  notify:
-    name: Notify Teams (Local Success)
-    needs: deploy-local
+# STAGING NOTIFICATION
+  staging-notify:
+    name: Notify Staging Success
+    needs: deploy-staging
     runs-on: ubuntu-latest
 
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Success Notification
+      - name: Send Staging Success Notification
         run: |
           echo "{
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"0078D7\",
-            \"title\":\"🗄️ Local Database Deployment Completed\",
-            \"summary\":\"Local SQL deployment successful\",
+            \"title\":\"🧪 Staging Deployment Successful\",
+            \"summary\":\"Staging SQL deployment complete\",
             \"sections\":[
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Environment\",\"value\":\"Staging\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
-            ],
-            \"potentialAction\":[
-              {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
-                ]
-              }
             ]
           }" > payload.json
 
@@ -128,178 +60,104 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
-
-# JOB 3 — APPROVAL NOTIFICATION
+# APPROVAL NOTIFICATION
   approval-notify:
     name: Notify Approval Required
-    needs: notify
+    needs: staging-notify
     runs-on: ubuntu-latest
 
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Approval Request
+      - name: Create payload
         run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"FFA500\",
-            \"title\":\"⚠️ Approval Required for Partner Deployment\",
-            \"summary\":\"Manual approval needed\",
-            \"sections\":[
+          cat <<EOF > payload.json
+          {
+            "@type":"MessageCard",
+            "@context":"http://schema.org/extensions",
+            "themeColor":"FFA500",
+            "title":"⚠️ Approval Required for Partner Deployment",
+            "summary":"Manual approval needed",
+            "sections":[
               {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                "facts":[
+                  {"name":"Repository","value":"${{ github.repository }}"},
+                  {"name":"Triggered By","value":"${{ github.actor }}"},
+                  {"name":"Database","value":"Cloud_Tunnels_TG"},
+                  {"name":"Time","value":"${{ steps.time.outputs.time }}"}
                 ]
               }
             ],
-            \"potentialAction\":[
+            "potentialAction":[
               {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
-                ]
-              }
-            ]
-          }" > payload.json
+                  "@type":"OpenUri",
+                  "name":"Approve Deployment",
+                  "targets":[
+                    {
+                      "os":"default",
+                      "uri":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+          }
+          EOF
 
       - name: Send to Teams
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
+# PRODUCTION DEPLOYMENT
+  deploy-production:
+    name: Deploy to Production
 
-# JOB 4 — MANUAL APPROVAL GATE
-  approval:
-    name: Manual Approval
     needs: approval-notify
-    runs-on: windows-latest
+    if: success()
 
-    environment:
-      name: production
+    uses: ./.github/workflows/deploy-sql-template.yml
 
-    steps:
-      - name: Await Approval
-        run: echo "Waiting for approval..."
+    with:
+      database: Cloud_Tunnels_TG
+      scripts_path: SQL-Project/scripts
+      environment_name: production
 
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
-# JOB 5 — PARTNER DEPLOYMENT
-  deploy-partner:
-    name: Deploy to Accountability Partner
-    needs: approval
-    runs-on: windows-latest
-
-    env:
-      DB_NAME: Cloud_Tunnels_TG
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create Partner Database
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -i "SQL-Project/scripts/CreateDatabase.sql"
-
-      - name: Run Partner Scripts
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateTable.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/SeedData.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ secrets.PARTNER_SQL_SERVER }},${{ secrets.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/LogExecution.sql"
-
-
-# JOB 6 — PARTNER SUCCESS NOTIFICATION
-  partner-notify:
-    name: Notify Partner Deployment Success
-    needs: deploy-partner
+# PRODUCTION NOTIFICATION
+  production-notify:
+    name: Notify Production Success
+    needs: deploy-production
     runs-on: ubuntu-latest
 
     steps:
       - name: Get Current Time
         id: time
-        run: |
-          echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Success Notification
+      - name: Send Production Success Notification
         run: |
           echo "{
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"28A745\",
-            \"title\":\"🎉 Partner Deployment Successful\",
-            \"summary\":\"Remote deployment complete\",
+            \"title\":\"🚀 Production Deployment Successful\",
+            \"summary\":\"Production SQL deployment complete\",
             \"sections\":[
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Environment\",\"value\":\"Production\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ],
-            \"potentialAction\":[
-              {
-                \"@type\":\"OpenUri\",
-                \"name\":\"View Workflow Run\",
-                \"targets\":[
-                  {
-                    \"os\":\"default\",
-                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                  }
                 ]
               }
             ]
@@ -309,7 +167,4 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
