@@ -38,14 +38,14 @@ jobs:
         run: |
           if ([string]::IsNullOrWhiteSpace("${{ inputs.server }}")) { throw "SERVER is empty" }
           if ([string]::IsNullOrWhiteSpace("${{ inputs.port }}")) { throw "PORT is empty" }
-          if ([string]::IsNullOrWhiteSpace("${{ inputs.username }}")) { throw "USERNAME is empty" }
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.username }}")) { throw "USERNAME is empty" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "PASSWORD is empty" }
 
       - name: Create Database
         shell: powershell
         run: |
           $server = "${{ inputs.server }},${{ inputs.port }}"
-          $user = "${{ inputs.username }}"
+          $user = "${{ secrets.username }}"
           $pass = "${{ secrets.sql_password }}"
           $db = "${{ inputs.database }}"
 
@@ -60,7 +60,7 @@ jobs:
         shell: powershell
         run: |
           $server = "${{ inputs.server }},${{ inputs.port }}"
-          $user = "${{ inputs.username }}"
+          $user = "${{ secrets.username }}"
           $pass = "${{ secrets.sql_password }}"
           $db = "${{ inputs.database }}"
           $path = "${{ inputs.scripts_path }}"
