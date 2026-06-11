@@ -1,37 +1,30 @@
 name: SQL Database Deployment
- 
+
 on:
   workflow_dispatch:
- 
+
   push:
     paths:
       - 'SQL-Project/scripts/**'
- 
+
 jobs:
- 
-# ==================================================
+
 # STAGING DEPLOYMENT
-# ==================================================
- 
   deploy-staging:
     name: Deploy to Staging
- 
+
     uses: ./.github/workflows/deploy-sql-template.yml
- 
+
     with:
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
       environment_name: staging
- 
+
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
- 
- 
-# ==================================================
+
 # STAGING NOTIFICATION
-# ==================================================
- 
   staging-notify:
     name: Notify Staging Success
     needs: deploy-staging
@@ -68,9 +61,8 @@ jobs:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
- 
-# JOB 3 — APPROVAL NOTIFICATION
+
+# APPROVAL NOTIFICATION
   approval-notify:
     name: Notify Approval Required
     needs: staging-notify
@@ -99,6 +91,22 @@ jobs:
                   {"name":"Time","value":"${{ steps.time.outputs.time }}"}
                 ]
               }
+            ],
+            "potentialAction":[
+              {
+                "@type":"OpenUri",
+                "name":"View Repo / Workflow Run",
+                "targets":[
+                  {
+                    "os":"default",
+                    "uri":"${{ github.server_url }}/${{ github.repository }}"
+                  },
+                  {
+                    "os":"default",
+                    "uri":"${{ github.server_url }}/${{ github.repository }}/actions"
+                  }
+                ]
+              }
             ]
           }
           EOF
@@ -108,35 +116,26 @@ jobs:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
- 
-# ==================================================
+
 # PRODUCTION DEPLOYMENT
-# ==================================================
- 
   deploy-production:
     name: Deploy to Production
- 
+
     needs: approval-notify
- 
     if: success()
- 
+
     uses: ./.github/workflows/deploy-sql-template.yml
- 
+
     with:
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
       environment_name: production
- 
+
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
- 
- 
-# ==================================================
+
 # PRODUCTION NOTIFICATION
-# ==================================================
- 
   production-notify:
     name: Notify Production Success
     needs: deploy-production
