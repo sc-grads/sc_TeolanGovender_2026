@@ -16,6 +16,7 @@ jobs:
     name: Deploy to Local SQL Server
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
+      environment: Staging
       server: ${{ vars.SQL_SERVER }}
       port: ${{ vars.SQL_PORT }}
       username: ${{ vars.SQL_USERNAME }}
@@ -130,6 +131,7 @@ jobs:
     needs: approval
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
+      environment: Staging
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
       username: ${{ vars.PARTNER_SQL_USERNAME }}
