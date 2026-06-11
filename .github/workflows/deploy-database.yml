@@ -16,6 +16,8 @@ jobs:
   deploy-local:
     name: Deploy to Local SQL Server
     runs-on: windows-latest
+    environment:
+      name: Staging
 
     steps:
       - name: Checkout repository
@@ -27,7 +29,7 @@ jobs:
           sqlcmd `
             -b `
             -C `
-            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
