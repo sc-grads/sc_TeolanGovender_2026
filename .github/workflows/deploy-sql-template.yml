@@ -28,8 +28,8 @@ jobs:
   deploy:
     runs-on: windows-latest
 
-    environment:
-      name: ${{ inputs.environment_name }}
+    #environment:
+     # name: ${{ inputs.environment_name }}
 
     steps:
       - name: Checkout repository
