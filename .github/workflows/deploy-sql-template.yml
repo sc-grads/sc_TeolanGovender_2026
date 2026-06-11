@@ -48,7 +48,7 @@ jobs:
         run: |
           $server = "${{ inputs.server }},${{ inputs.port }}"
           $user = "${{ secrets.SQL_USERNAME }}"
-          $pass = "${{ secrets.SQL_PASSWORD }}
+          $pass = "${{ secrets.SQL_PASSWORD }}"
           $db = "${{ inputs.database }}"
 
           sqlcmd `
