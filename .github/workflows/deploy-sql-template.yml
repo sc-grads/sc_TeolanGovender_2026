@@ -18,6 +18,9 @@ on:
       scripts_path:
         required: true
         type: string
+      environment:
+        required: false
+        type: string
 
     secrets:
       sql_password:
@@ -27,6 +30,7 @@ on:
 jobs:
   deploy:
     runs-on: windows-latest
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout repository
