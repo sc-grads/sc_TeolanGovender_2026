@@ -1,71 +1,152 @@
-name: SQL Database Deployment
- 
+name: Deploy SQL Database
+
 on:
   workflow_dispatch:
- 
   push:
     paths:
       - 'SQL-Project/scripts/**'
- 
+
 jobs:
- 
-# ==================================================
-# STAGING DEPLOYMENT
-# ==================================================
- 
-  deploy-staging:
-    name: Deploy to Staging
- 
+
+# =========================
+# LOCAL DEPLOYMENT (STAGING ENV)
+# =========================
+  deploy-local:
     uses: ./.github/workflows/deploy-sql-template.yml
- 
     with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
+      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-      environment_name: staging
- 
-    secrets:
-      sql_username: ${{ secrets.SQL_USERNAME }}
-      sql_password: ${{ secrets.SQL_PASSWORD }}
- 
-# ==================================================
-# APPROVAL GATE
-# ==================================================
- 
-  approval:
-    name: Production Approval
- 
-    needs: deploy-staging
- 
-    if: success()
- 
+    secrets: inherit
+
+# =========================
+# LOCAL NOTIFICATION
+# =========================
+  notify:
+    name: Notify Teams (Local Success)
+    needs: deploy-local
     runs-on: ubuntu-latest
- 
-    environment:
-      name: production
- 
+
     steps:
-      - name: Await Approval
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Send Success Notification
         run: |
-          echo "Waiting for production approval..."
- 
-# ==================================================
-# PRODUCTION DEPLOYMENT
-# ==================================================
- 
-  deploy-production:
-    name: Deploy to Production
- 
-    needs: approval
- 
-    if: success()
- 
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"0078D7\",
+            \"title\":\"🗄️ Local Database Deployment Completed\",
+            \"summary\":\"Local SQL deployment successful\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Status\",\"value\":\"SUCCESS\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
+# =========================
+# APPROVAL NOTIFICATION
+# =========================
+  approval-notify:
+    name: Notify Approval Required
+    needs: notify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Send Approval Request
+        run: |
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"FFA500\",
+            \"title\":\"⚠️ Approval Required for Partner Deployment\",
+            \"summary\":\"Manual approval needed\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
+                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
+# =========================
+# PARTNER DEPLOYMENT (PRODUCTION ENV)
+# =========================
+  deploy-partner:
     uses: ./.github/workflows/deploy-sql-template.yml
- 
+    needs: approval-notify
     with:
+      server: ${{ vars.PARTNER_SQL_SERVER }}
+      port: ${{ vars.PARTNER_SQL_PORT }}
+      username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-      environment_name: production
- 
-    secrets:
-      sql_username: ${{ secrets.SQL_USERNAME }}
-      sql_password: ${{ secrets.SQL_PASSWORD }}
+    secrets: inherit
+
+# =========================
+# PARTNER NOTIFICATION
+# =========================
+  partner-notify:
+    needs: deploy-partner
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Send Success Notification
+        run: |
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"28A745\",
+            \"title\":\"🎉 Partner Deployment Successful\",
+            \"summary\":\"Remote deployment complete\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Status\",\"value\":\"SUCCESS\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
