@@ -12,11 +12,10 @@ env:
 
 jobs:
 
-# JOB 1 — STAGING DEPLOYMENT
-  deploy-staging:
-    name: Deploy to Staging SQL Server
+# JOB 1 — LOCAL DEPLOYMENT (NOW USING STAGING ENVIRONMENT)
+  deploy-local:
+    name: Deploy to Local SQL Server
     runs-on: windows-latest
-    environment: staging
 
     steps:
       - name: Checkout repository
@@ -77,28 +76,29 @@ jobs:
             -i "SQL-Project/scripts/LogExecution.sql"
 
 
-# JOB 2 — STAGING NOTIFY
-  notify-staging:
-    name: Notify Staging Success
-    needs: deploy-staging
+# JOB 2 — LOCAL SUCCESS NOTIFICATION (UNCHANGED)
+  notify:
+    name: Notify Teams (Local Success)
+    needs: deploy-local
     runs-on: ubuntu-latest
 
     steps:
-      - name: Time
+      - name: Get Current Time
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Notification
+      - name: Send Success Notification
         run: |
           echo "{
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"0078D7\",
-            \"title\":\"🟦 Staging Deployment Complete\",
+            \"title\":\"🗄️ Local Database Deployment Completed\",
+            \"summary\":\"Local SQL deployment successful\",
             \"sections\":[
               {
                 \"facts\":[
-                  {\"name\":\"Repo\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
@@ -114,14 +114,14 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 3 — APPROVAL NOTIFY
+# JOB 3 — APPROVAL NOTIFICATION (UNCHANGED)
   approval-notify:
-    name: Notify Production Approval
-    needs: notify-staging
+    name: Notify Approval Required
+    needs: notify
     runs-on: ubuntu-latest
 
     steps:
-      - name: Time
+      - name: Get Current Time
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
@@ -131,16 +131,30 @@ jobs:
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"FFA500\",
-            \"title\":\"⚠️ Production Approval Required\",
+            \"title\":\"⚠️ Approval Required for Partner Deployment\",
+            \"summary\":\"Manual approval needed\",
             \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repo\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"}
-                ]
-              }
-            ]
+            {
+              \"facts\":[
+                {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
+                {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+              ]
+            }
+          ],
+          \"potentialAction\":[
+            {
+              \"@type\":\"OpenUri\",
+              \"name\":\"🔍 View Workflow Run\",
+              \"targets\":[
+                {
+                  \"os\":\"default\",
+                  \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+                }
+              ]
+            }
+          ]
           }" > payload.json
 
       - name: Send to Teams
@@ -150,7 +164,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 4 — PRODUCTION GATE
+# JOB 4 — MANUAL APPROVAL GATE (UNCHANGED)
   approval:
     name: Manual Approval
     needs: approval-notify
@@ -159,22 +173,21 @@ jobs:
       name: production
 
     steps:
-      - name: Wait for Approval
-        run: echo "Waiting for production approval..."
+      - name: Await Approval
+        run: echo "Waiting for approval..."
 
 
-# JOB 5 — PRODUCTION DEPLOY
-  deploy-production:
-    name: Deploy to Partner SQL Server
+# JOB 5 — PARTNER DEPLOYMENT (UNCHANGED)
+  deploy-partner:
+    name: Deploy to Accountability Partner
     needs: approval
     runs-on: windows-latest
-    environment: production
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create Database
+      - name: Create Partner Database
         shell: powershell
         run: |
           sqlcmd `
@@ -184,7 +197,7 @@ jobs:
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
 
-      - name: Run Scripts
+      - name: Run Partner Scripts
         shell: powershell
         run: |
           sqlcmd `
@@ -218,3 +231,41 @@ jobs:
             -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
             -i "SQL-Project/scripts/LogExecution.sql"
+
+
+# JOB 6 — PARTNER SUCCESS NOTIFICATION (UNCHANGED)
+  partner-notify:
+    name: Notify Partner Deployment Success
+    needs: deploy-partner
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Send Success Notification
+        run: |
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"28A745\",
+            \"title\":\"🎉 Partner Deployment Successful\",
+            \"summary\":\"Remote deployment complete\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                  {\"name\":\"Status\",\"value\":\"SUCCESS\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
