@@ -1,32 +1,40 @@
-name: Deploy SQL Database
-
+name: SQL Database Deployment
+ 
 on:
   workflow_dispatch:
+ 
   push:
     paths:
       - 'SQL-Project/scripts/**'
-
+ 
 jobs:
-
-# =========================
-# LOCAL DEPLOYMENT (STAGING ENV)
-# =========================
-  deploy-local:
+ 
+# ==================================================
+# STAGING DEPLOYMENT
+# ==================================================
+ 
+  deploy-staging:
+    name: Deploy to Staging
+ 
     uses: ./.github/workflows/deploy-sql-template.yml
+ 
     with:
-      server: ${{ vars.SQL_SERVER }}
-      port: ${{ vars.SQL_PORT }}
-      username: ${{ vars.SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-    secrets: inherit
-
-# =========================
-# LOCAL NOTIFICATION
-# =========================
-  notify:
-    name: Notify Teams (Local Success)
-    needs: deploy-local
+      environment_name: staging
+ 
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
+ 
+ 
+# ==================================================
+# STAGING NOTIFICATION
+# ==================================================
+ 
+  staging-notify:
+    name: Notify Staging Success
+    needs: deploy-staging
     runs-on: ubuntu-latest
 
     steps:
@@ -34,19 +42,20 @@ jobs:
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Success Notification
+      - name: Send Staging Success Notification
         run: |
           echo "{
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"0078D7\",
-            \"title\":\"🗄️ Local Database Deployment Completed\",
-            \"summary\":\"Local SQL deployment successful\",
+            \"title\":\"🧪 Staging Deployment Successful\",
+            \"summary\":\"Staging SQL deployment complete\",
             \"sections\":[
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Environment\",\"value\":\"Staging\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
@@ -59,65 +68,60 @@ jobs:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
-
-# =========================
-# APPROVAL NOTIFICATION
-# =========================
-  approval-notify:
-    name: Notify Approval Required
-    needs: notify
+ 
+ 
+# ==================================================
+# APPROVAL GATE
+# ==================================================
+ 
+  approval:
+    name: Production Approval
+ 
+    needs: staging-notify
+ 
+    if: success()
+ 
     runs-on: ubuntu-latest
-
+ 
+    environment:
+      name: production
+ 
     steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
-
-      - name: Send Approval Request
+      - name: Await Approval
         run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"FFA500\",
-            \"title\":\"⚠️ Approval Required for Partner Deployment\",
-            \"summary\":\"Manual approval needed\",
-            \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
-          }" > payload.json
-
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
-
-# =========================
-# PARTNER DEPLOYMENT (PRODUCTION ENV)
-# =========================
-  deploy-partner:
+          echo "Waiting for production approval..."
+ 
+ 
+# ==================================================
+# PRODUCTION DEPLOYMENT
+# ==================================================
+ 
+  deploy-production:
+    name: Deploy to Production
+ 
+    needs: approval
+ 
+    if: success()
+ 
     uses: ./.github/workflows/deploy-sql-template.yml
-    needs: approval-notify
+ 
     with:
-      server: ${{ vars.PARTNER_SQL_SERVER }}
-      port: ${{ vars.PARTNER_SQL_PORT }}
-      username: ${{ vars.PARTNER_SQL_USERNAME }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
-    secrets: inherit
-
-# =========================
-# PARTNER NOTIFICATION
-# =========================
-  partner-notify:
-    needs: deploy-partner
+      environment_name: production
+ 
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
+ 
+ 
+# ==================================================
+# PRODUCTION NOTIFICATION
+# ==================================================
+ 
+  production-notify:
+    name: Notify Production Success
+    needs: deploy-production
     runs-on: ubuntu-latest
 
     steps:
@@ -125,19 +129,20 @@ jobs:
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Send Success Notification
+      - name: Send Production Success Notification
         run: |
           echo "{
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"28A745\",
-            \"title\":\"🎉 Partner Deployment Successful\",
-            \"summary\":\"Remote deployment complete\",
+            \"title\":\"🚀 Production Deployment Successful\",
+            \"summary\":\"Production SQL deployment complete\",
             \"sections\":[
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
+                  {\"name\":\"Environment\",\"value\":\"Production\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
