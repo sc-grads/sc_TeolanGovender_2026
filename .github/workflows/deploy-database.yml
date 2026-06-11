@@ -27,9 +27,9 @@ jobs:
           sqlcmd `
             -b `
             -C `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
+            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -U "${{ secrets.Local_SQL_USERNAME }}" `
+            -P "${{ secrets.Local_SQL_PASSWORD }}" `
             -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
 
       - name: Run CreateTable script
