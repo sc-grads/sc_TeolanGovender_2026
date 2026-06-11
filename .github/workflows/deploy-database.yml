@@ -70,26 +70,44 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
  
  
-# ==================================================
-# APPROVAL GATE
-# ==================================================
- 
-  approval:
-    name: Production Approval
- 
+# JOB 3 — APPROVAL NOTIFICATION
+  approval-notify:
+    name: Notify Approval Required
     needs: staging-notify
- 
-    if: success()
- 
     runs-on: ubuntu-latest
- 
-    environment:
-      name: production
- 
+
     steps:
-      - name: Await Approval
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Create payload
         run: |
-          echo "Waiting for production approval..."
+          cat <<EOF > payload.json
+          {
+            "@type":"MessageCard",
+            "@context":"http://schema.org/extensions",
+            "themeColor":"FFA500",
+            "title":"⚠️ Approval Required for Partner Deployment",
+            "summary":"Manual approval needed",
+            "sections":[
+              {
+                "facts":[
+                  {"name":"Repository","value":"${{ github.repository }}"},
+                  {"name":"Triggered By","value":"${{ github.actor }}"},
+                  {"name":"Database","value":"Cloud_Tunnels_TG"},
+                  {"name":"Time","value":"${{ steps.time.outputs.time }}"}
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
  
  
 # ==================================================
@@ -99,7 +117,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
  
-    needs: approval
+    needs: approval-notify
  
     if: success()
  
