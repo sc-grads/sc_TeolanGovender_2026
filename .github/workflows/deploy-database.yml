@@ -12,7 +12,7 @@ env:
 
 jobs:
 
-# JOB 1 — LOCAL DEPLOYMENT (NOW USING STAGING ENVIRONMENT)
+# JOB 1 — LOCAL DEPLOYMENT (USING STAGING ENVIRONMENT)
   deploy-local:
     name: Deploy to Local SQL Server
     runs-on: windows-latest
@@ -39,7 +39,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -50,7 +50,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -61,7 +61,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -72,7 +72,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
