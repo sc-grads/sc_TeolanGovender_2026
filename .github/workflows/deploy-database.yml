@@ -9,75 +9,20 @@ on:
 env:
   DB_NAME: Cloud_Tunnels_TG
 
-
 jobs:
 
-# JOB 1 — LOCAL DEPLOYMENT (USING STAGING ENVIRONMENT)
+# JOB 1 — LOCAL DEPLOYMENT (USING TEMPLATE)
   deploy-local:
     name: Deploy to Local SQL Server
-    runs-on: windows-latest
-    environment:
-      name: Staging
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create Database
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -C `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
-
-      - name: Run CreateTable script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateTable.sql"
-
-      - name: Run CreateLoggingTable script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-      - name: Run SeedData script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/SeedData.sql"
-
-      - name: Run Execution Log script
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
-            -U "${{ secrets.SQL_USERNAME }}" `
-            -P "${{ secrets.SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/LogExecution.sql"
-
+    uses: ./.github/workflows/deploy-sql-template.yml
+    with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
+      username: ${{ vars.SQL_USERNAME }}
+      database: Cloud_Tunnels_TG
+      scripts_path: SQL-Project/scripts
+    secrets:
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
 # JOB 2 — LOCAL SUCCESS NOTIFICATION
   notify:
@@ -137,27 +82,27 @@ jobs:
             \"title\":\"⚠️ Approval Required for Partner Deployment\",
             \"summary\":\"Manual approval needed\",
             \"sections\":[
-            {
-              \"facts\":[
-                {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
-                {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-              ]
-            }
-          ],
-          \"potentialAction\":[
-            {
-              \"@type\":\"OpenUri\",
-              \"name\":\"🔍 View Workflow Run\",
-              \"targets\":[
-                {
-                  \"os\":\"default\",
-                  \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                }
-              ]
-            }
-          ]
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
+                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ],
+            \"potentialAction\":[
+              {
+                \"@type\":\"OpenUri\",
+                \"name\":\"🔍 View Workflow Run\",
+                \"targets\":[
+                  {
+                    \"os\":\"default\",
+                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+                  }
+                ]
+              }
+            ]
           }" > payload.json
 
       - name: Send to Teams
@@ -179,62 +124,19 @@ jobs:
       - name: Await Approval
         run: echo "Waiting for approval..."
 
-
-# JOB 5 — PARTNER DEPLOYMENT
+# JOB 5 — PARTNER DEPLOYMENT (USING TEMPLATE)
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create Partner Database
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
-
-      - name: Run Partner Scripts
-        shell: powershell
-        run: |
-          sqlcmd `
-            -b `
-            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateTable.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/CreateLoggingTable.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/SeedData.sql"
-
-          sqlcmd `
-            -b `
-            -S "${{ vars.PARTNER_SQL_SERVER }},${{ vars.PARTNER_SQL_PORT }}" `
-            -U "${{ secrets.PARTNER_SQL_USERNAME }}" `
-            -P "${{ secrets.PARTNER_SQL_PASSWORD }}" `
-            -d "${{ env.DB_NAME }}" `
-            -i "SQL-Project/scripts/LogExecution.sql"
-
+    uses: ./.github/workflows/deploy-sql-template.yml
+    with:
+      server: ${{ vars.PARTNER_SQL_SERVER }}
+      port: ${{ vars.PARTNER_SQL_PORT }}
+      username: ${{ vars.PARTNER_SQL_USERNAME }}
+      database: Cloud_Tunnels_TG
+      scripts_path: SQL-Project/scripts
+    secrets:
+      sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
 
 # JOB 6 — PARTNER SUCCESS NOTIFICATION
   partner-notify:
