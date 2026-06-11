@@ -12,10 +12,13 @@ env:
 
 jobs:
 
-# JOB 1 — LOCAL DEPLOYMENT
-  deploy-local:
-    name: Deploy to Local SQL Server
+# JOB 1 — STAGING DEPLOYMENT
+  deploy-staging:
+    name: Deploy to Staging Environment
     runs-on: windows-latest
+
+    environment:
+      name: Staging
 
     steps:
       - name: Checkout repository
@@ -26,7 +29,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -Q "IF DB_ID('${{ env.DB_NAME }}') IS NULL CREATE DATABASE ${{ env.DB_NAME }};"
@@ -36,7 +39,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -47,7 +50,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -58,7 +61,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -69,17 +72,17 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.LOCAL_SQL_SERVER }},${{ vars.LOCAL_SQL_PORT }}" `
+            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
             -i "SQL-Project/scripts/LogExecution.sql"
 
 
-# JOB 2 — LOCAL SUCCESS NOTIFICATION
+# JOB 2 — STAGING SUCCESS NOTIFICATION
   notify:
-    name: Notify Teams (Local Success)
-    needs: deploy-local
+    name: Notify Teams (Staging Success)
+    needs: deploy-staging
     runs-on: ubuntu-latest
 
     steps:
@@ -93,8 +96,8 @@ jobs:
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"0078D7\",
-            \"title\":\"🗄️ Local Database Deployment Completed\",
-            \"summary\":\"Local SQL deployment successful\",
+            \"title\":\"Deployment To Local Server Completed\",
+            \"summary\":\"Staging SQL deployment successful\",
             \"sections\":[
               {
                 \"facts\":[
@@ -114,7 +117,7 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-  # JOB 3 — APPROVAL NOTIFICATION
+# JOB 3 — APPROVAL NOTIFICATION
   approval-notify:
     name: Notify Approval Required
     needs: notify
@@ -131,30 +134,30 @@ jobs:
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"FFA500\",
-            \"title\":\"⚠️ Approval Required for Partner Deployment\",
-            \"summary\":\"Manual approval needed\",
+            \"title\":\"Production Approval Required\",
+            \"summary\":\"Manual approval needed before partner deploy\",
             \"sections\":[
-            {
-              \"facts\":[
-                {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
-                {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-              ]
-            }
-          ],
-          \"potentialAction\":[
-            {
-              \"@type\":\"OpenUri\",
-              \"name\":\"🔍 View Workflow Run\",
-              \"targets\":[
-                {
-                  \"os\":\"default\",
-                  \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-                }
-              ]
-            }
-          ]
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
+                  {\"name\":\"Database\",\"value\":\"${{ env.DB_NAME }}\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ],
+            \"potentialAction\":[
+              {
+                \"@type\":\"OpenUri\",
+                \"name\":\"View Workflow Run\",
+                \"targets\":[
+                  {
+                    \"os\":\"default\",
+                    \"uri\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+                  }
+                ]
+              }
+            ]
           }" > payload.json
 
       - name: Send to Teams
@@ -164,24 +167,24 @@ jobs:
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
 
-# JOB 4 — MANUAL APPROVAL GATE
+# JOB 4 — MANUAL APPROVAL GATE (PRODUCTION ENVIRONMENT)
   approval:
     name: Manual Approval
     needs: approval-notify
     runs-on: windows-latest
+
     environment:
       name: production
 
-    steps:
-      - name: Await Approval
-        run: echo "Waiting for approval..."
 
-
-# JOB 5 — PARTNER DEPLOYMENT
+# JOB 5 — PARTNER DEPLOYMENT (PRODUCTION)
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
     runs-on: windows-latest
+
+    environment:
+      name: production
 
     steps:
       - name: Checkout repository
@@ -250,7 +253,7 @@ jobs:
             \"@type\":\"MessageCard\",
             \"@context\":\"http://schema.org/extensions\",
             \"themeColor\":\"28A745\",
-            \"title\":\"🎉 Partner Deployment Successful\",
+            \"title\":\"Partner Deployment Successful\",
             \"summary\":\"Remote deployment complete\",
             \"sections\":[
               {
