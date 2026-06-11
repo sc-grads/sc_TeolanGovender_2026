@@ -37,7 +37,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
+            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -48,7 +48,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
+            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -59,7 +59,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
+            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
@@ -70,7 +70,7 @@ jobs:
         run: |
           sqlcmd `
             -b `
-            -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" `
+            -S "${{ vars.Local_SQL_SERVER }},${{ vars.Local_SQL_PORT }}" `
             -U "${{ secrets.SQL_USERNAME }}" `
             -P "${{ secrets.SQL_PASSWORD }}" `
             -d "${{ env.DB_NAME }}" `
