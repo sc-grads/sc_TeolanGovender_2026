@@ -1,38 +1,41 @@
 name: Deploy SQL Database
+
 on:
   workflow_dispatch:
   push:
     paths:
       - 'SQL-Project/scripts/**'
- 
+
 jobs:
- 
+
 # =========================
 # LOCAL DEPLOYMENT
 # =========================
   deploy-local:
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
       environment_name: staging
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
- 
+
 # =========================
 # LOCAL SUCCESS NOTIFICATION
 # =========================
   notify:
     name: Notify Teams (Local Success)
     needs: deploy-local
-    if: needs.deploy-local.result == 'success'
     runs-on: ubuntu-latest
+
     steps:
       - name: Get Current Time
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
- 
+
       - name: Send Success Notification
         run: |
           echo "{
@@ -47,72 +50,31 @@ jobs:
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
             ]
           }" > payload.json
- 
+
       - name: Send to Teams
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
-# =========================
-# LOCAL FAILURE NOTIFICATION
-# =========================
-  notify-failure:
-    name: Notify Teams (Local Failure)
-    needs: deploy-local
-    if: needs.deploy-local.result == 'failure'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
- 
-      - name: Send Failure Notification
         run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"FF0000\",
-            \"title\":\"❌ Local Database Deployment Failed\",
-            \"summary\":\"Local SQL deployment failed\",
-            \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
-                  {\"name\":\"Status\",\"value\":\"FAILED\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
-          }" > payload.json
- 
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
 # =========================
 # APPROVAL NOTIFICATION
 # =========================
   approval-notify:
     name: Notify Approval Required
     needs: notify
-    if: needs.notify.result == 'success'
     runs-on: ubuntu-latest
+
     steps:
       - name: Get Current Time
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
- 
+
       - name: Send Approval Request
         run: |
           echo "{
@@ -126,62 +88,62 @@ jobs:
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},
                   {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
             ]
           }" > payload.json
- 
+
       - name: Send to Teams
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
 # =========================
 # APPROVAL GATE
 # =========================
   approval:
-    name: Manual Approval
     needs: approval-notify
-    if: needs.approval-notify.result == 'success'
     runs-on: windows-latest
     environment:
       name: production
+
     steps:
       - name: Await Approval
         run: echo "Waiting for approval..."
- 
+
 # =========================
 # PARTNER DEPLOYMENT
 # =========================
   deploy-partner:
-    name: Deploy to Partner
     needs: approval
-    if: needs.approval.result == 'success'
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
+      server: ${{ vars.SQL_SERVER }}
+      port: ${{ vars.SQL_PORT }}
       database: Cloud_Tunnels_TG
       scripts_path: SQL-Project/scripts
       environment_name: production
+
     secrets:
-      sql_username: ${{ secrets.PARTNER_SQL_USERNAME }}
-      sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
- 
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
+
 # =========================
 # PARTNER SUCCESS NOTIFICATION
 # =========================
   partner-notify:
     name: Notify Partner Deployment Success
     needs: deploy-partner
-    if: needs.deploy-partner.result == 'success'
     runs-on: ubuntu-latest
+
     steps:
       - name: Get Current Time
         id: time
         run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
- 
+
       - name: Send Success Notification
         run: |
           echo "{
@@ -196,55 +158,14 @@ jobs:
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
             ]
           }" > payload.json
- 
+
       - name: Send to Teams
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
- 
-# =========================
-# PARTNER FAILURE NOTIFICATION
-# =========================
-  partner-notify-failure:
-    name: Notify Partner Deployment Failure
-    needs: deploy-partner
-    if: needs.deploy-partner.result == 'failure'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
- 
-      - name: Send Failure Notification
         run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"FF0000\",
-            \"title\":\"❌ Partner Deployment Failed\",
-            \"summary\":\"Remote deployment failed\",
-            \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"Cloud_Tunnels_TG\"},
-                  {\"name\":\"Status\",\"value\":\"FAILED\"},
-                  {\"name\":\"Triggered By\",\"value\":\"${{ github.actor }}\"},
-                  {\"name\":\"Branch\",\"value\":\"${{ github.ref_name }}\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
-          }" > payload.json
- 
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
