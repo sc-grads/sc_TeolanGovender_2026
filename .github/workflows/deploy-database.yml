@@ -15,12 +15,13 @@ jobs:
 # LOCAL DEPLOYMENT
 # =========================
   deploy-local:
+    name: Deploy Local SQL
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
       server: ${{ vars.SQL_SERVER }}
       port: ${{ vars.SQL_PORT }}
       username: ${{ secrets.SQL_USERNAME }}
-      database: Cloud_Tunnels_TG
+      database: ${{ env.DB_NAME }}
       scripts_path: SQL-Project/scripts
     secrets:
       sql_password: ${{ secrets.SQL_PASSWORD }}
@@ -133,12 +134,14 @@ jobs:
 # PARTNER DEPLOYMENT
 # =========================
   deploy-partner:
+    name: Deploy Partner SQL
+    needs: approval
     uses: ./.github/workflows/deploy-sql-template.yml
     with:
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
       username: ${{ secrets.PARTNER_SQL_USERNAME }}
-      database: Cloud_Tunnels_TG
+      database: ${{ env.DB_NAME }}
       scripts_path: SQL-Project/scripts
     secrets:
       sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
