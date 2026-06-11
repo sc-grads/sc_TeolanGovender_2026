@@ -11,21 +11,25 @@ env:
 
 jobs:
 
-# JOB 1 — LOCAL DEPLOYMENT (USING TEMPLATE)
+# =========================
+# LOCAL DEPLOYMENT
+# =========================
   deploy-local:
     name: Deploy to Local SQL Server
     uses: ./.github/workflows/deploy-sql-template.yml
+    environment: Staging
     with:
-      environment: Staging
       server: ${{ vars.SQL_SERVER }}
       port: ${{ vars.SQL_PORT }}
-      username: ${{ vars.SQL_USERNAME }}
-      database: Cloud_Tunnels_TG
+      username: ${{ secrets.SQL_USERNAME }}
+      database: ${{ env.DB_NAME }}
       scripts_path: SQL-Project/scripts
     secrets:
       sql_password: ${{ secrets.SQL_PASSWORD }}
 
-# JOB 2 — LOCAL SUCCESS NOTIFICATION
+# =========================
+# LOCAL NOTIFICATION
+# =========================
   notify:
     name: Notify Teams (Local Success)
     needs: deploy-local
@@ -62,8 +66,9 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
-
-# JOB 3 — APPROVAL NOTIFICATION
+# =========================
+# APPROVAL NOTIFICATION
+# =========================
   approval-notify:
     name: Notify Approval Required
     needs: notify
@@ -112,8 +117,9 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
-
-# JOB 4 — MANUAL APPROVAL GATE
+# =========================
+# APPROVAL GATE
+# =========================
   approval:
     name: Manual Approval
     needs: approval-notify
@@ -125,22 +131,26 @@ jobs:
       - name: Await Approval
         run: echo "Waiting for approval..."
 
-# JOB 5 — PARTNER DEPLOYMENT (USING TEMPLATE)
+# =========================
+# PARTNER DEPLOYMENT
+# =========================
   deploy-partner:
     name: Deploy to Accountability Partner
     needs: approval
     uses: ./.github/workflows/deploy-sql-template.yml
+    environment: production
     with:
-      environment: Staging
       server: ${{ vars.PARTNER_SQL_SERVER }}
       port: ${{ vars.PARTNER_SQL_PORT }}
-      username: ${{ vars.PARTNER_SQL_USERNAME }}
-      database: Cloud_Tunnels_TG
+      username: ${{ secrets.PARTNER_SQL_USERNAME }}
+      database: ${{ env.DB_NAME }}
       scripts_path: SQL-Project/scripts
     secrets:
       sql_password: ${{ secrets.PARTNER_SQL_PASSWORD }}
 
-# JOB 6 — PARTNER SUCCESS NOTIFICATION
+# =========================
+# PARTNER NOTIFICATION
+# =========================
   partner-notify:
     name: Notify Partner Deployment Success
     needs: deploy-partner
