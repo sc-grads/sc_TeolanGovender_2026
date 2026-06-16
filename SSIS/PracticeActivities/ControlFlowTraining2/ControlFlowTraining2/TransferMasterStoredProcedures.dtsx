@@ -1,31 +1,31 @@
 ﻿<?xml version="1.0"?>
 <DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
   DTS:refId="Package"
-  DTS:CreationDate="6/12/2026 2:36:27 PM"
+  DTS:CreationDate="6/15/2026 9:17:23 AM"
   DTS:CreationName="Microsoft.Package"
   DTS:CreatorComputerName="LAPTOP-4KISL5TR"
   DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
-  DTS:DTSID="{06E9E617-8AA5-4E31-9FE2-B271FD28E970}"
+  DTS:DTSID="{5B33AAAA-D0F0-43BA-A106-F872BB3CD644}"
   DTS:ExecutableType="Microsoft.Package"
   DTS:LastModifiedProductVersion="17.0.1016.0"
   DTS:LocaleID="7177"
-  DTS:ObjectName="WebServiceTask"
+  DTS:ObjectName="TransferMasterStoredProcedures"
   DTS:PackageType="5"
   DTS:VersionBuild="2"
-  DTS:VersionGUID="{A41B5CDE-34E9-44B3-8B31-50C0354CDAC5}">
+  DTS:VersionGUID="{5EF85E3A-147A-4CE3-8A87-6D8D9C0DFF6A}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:Variables />
   <DTS:Executables>
     <DTS:Executable
-      DTS:refId="Package\Web Service Task"
-      DTS:CreationName="Microsoft.WebServiceTask"
-      DTS:Description="Web Service Task"
-      DTS:DTSID="{77326CF5-21DC-4DFF-9610-7CF16BE7AE06}"
-      DTS:ExecutableType="Microsoft.WebServiceTask"
+      DTS:refId="Package\Transfer Master Stored Procedures Task"
+      DTS:CreationName="Microsoft.TransferStoredProceduresTask"
+      DTS:Description="Transfer Master Stored Procedures Task"
+      DTS:DTSID="{554831ED-9F28-4984-BB84-D6F5924E38A1}"
+      DTS:ExecutableType="Microsoft.TransferStoredProceduresTask"
       DTS:LocaleID="-1"
-      DTS:ObjectName="Web Service Task"
-      DTS:TaskContact="Web Service Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ObjectName="Transfer Master Stored Procedures Task"
+      DTS:TaskContact="Transfer Stored Procedures Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
       DTS:ThreadHint="0">
       <DTS:Variables />
       <DTS:ObjectData />
@@ -44,9 +44,9 @@
       <GraphLayout
         Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
         <NodeLayout
-          Size="168,42"
-          Id="Package\Web Service Task"
-          TopLeft="304,173" />
+          Size="278,42"
+          Id="Package\Transfer Master Stored Procedures Task"
+          TopLeft="627,194" />
       </GraphLayout>
     </LayoutInfo>
   </Package>

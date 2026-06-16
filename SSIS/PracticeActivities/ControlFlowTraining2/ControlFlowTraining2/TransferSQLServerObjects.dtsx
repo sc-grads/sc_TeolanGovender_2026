@@ -1,31 +1,31 @@
 ﻿<?xml version="1.0"?>
 <DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
   DTS:refId="Package"
-  DTS:CreationDate="6/12/2026 2:36:27 PM"
+  DTS:CreationDate="6/15/2026 9:17:21 AM"
   DTS:CreationName="Microsoft.Package"
   DTS:CreatorComputerName="LAPTOP-4KISL5TR"
   DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
-  DTS:DTSID="{06E9E617-8AA5-4E31-9FE2-B271FD28E970}"
+  DTS:DTSID="{C913FE84-9D1D-4DAB-9398-B2F386CC26E6}"
   DTS:ExecutableType="Microsoft.Package"
   DTS:LastModifiedProductVersion="17.0.1016.0"
   DTS:LocaleID="7177"
-  DTS:ObjectName="WebServiceTask"
+  DTS:ObjectName="TransferSQLServerObjects"
   DTS:PackageType="5"
-  DTS:VersionBuild="2"
-  DTS:VersionGUID="{A41B5CDE-34E9-44B3-8B31-50C0354CDAC5}">
+  DTS:VersionBuild="4"
+  DTS:VersionGUID="{31ACCB41-FBA0-4B0F-86CC-2528501BA2C2}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:Variables />
   <DTS:Executables>
     <DTS:Executable
-      DTS:refId="Package\Web Service Task"
-      DTS:CreationName="Microsoft.WebServiceTask"
-      DTS:Description="Web Service Task"
-      DTS:DTSID="{77326CF5-21DC-4DFF-9610-7CF16BE7AE06}"
-      DTS:ExecutableType="Microsoft.WebServiceTask"
+      DTS:refId="Package\Transfer SQL Server Objects Task"
+      DTS:CreationName="Microsoft.TransferSqlServerObjectsTask"
+      DTS:Description="Transfer SQL Server Objects Task"
+      DTS:DTSID="{E8029816-8391-45F8-8C49-0A568F51B132}"
+      DTS:ExecutableType="Microsoft.TransferSqlServerObjectsTask"
       DTS:LocaleID="-1"
-      DTS:ObjectName="Web Service Task"
-      DTS:TaskContact="Web Service Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ObjectName="Transfer SQL Server Objects Task"
+      DTS:TaskContact="Transfer Objects Task; Microsoft Corporation; SQL Server 2025; (c) Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
       DTS:ThreadHint="0">
       <DTS:Variables />
       <DTS:ObjectData />
@@ -44,9 +44,9 @@
       <GraphLayout
         Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
         <NodeLayout
-          Size="168,42"
-          Id="Package\Web Service Task"
-          TopLeft="304,173" />
+          Size="247,42"
+          Id="Package\Transfer SQL Server Objects Task"
+          TopLeft="462,294" />
       </GraphLayout>
     </LayoutInfo>
   </Package>

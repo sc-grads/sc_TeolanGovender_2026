@@ -1,0 +1,160 @@
+﻿<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="6/16/2026 12:59:20 PM"
+  DTS:CreationName="Microsoft.Package"
+  DTS:CreatorComputerName="LAPTOP-4KISL5TR"
+  DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
+  DTS:DTSID="{C46311E3-7646-4762-B315-21C7126366A6}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:LastModifiedProductVersion="17.0.1016.0"
+  DTS:LocaleID="7177"
+  DTS:ObjectName="LogProviders"
+  DTS:PackageType="5"
+  DTS:VersionBuild="3"
+  DTS:VersionGUID="{3529DF3F-7335-4476-B985-1FEAE71722E1}">
+  <DTS:Property
+    DTS:Name="PackageFormatVersion">8</DTS:Property>
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{DB825A3B-10DA-4223-B380-C0E325A08074}"
+      DTS:ObjectName="LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectRetryCount="1"
+          DTS:ConnectRetryInterval="5"
+          DTS:ConnectionString="Data Source=LAPTOP-4KISL5TR\MSSQLSERVERDEVEL;Initial Catalog=AdventureWorks2014;Provider=SQLNCLI11.1;Integrated Security=SSPI;Application Name=SSIS-LogProviders-{DB825A3B-10DA-4223-B380-C0E325A08074}LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[TextLog.txt]"
+      DTS:CreationName="FILE"
+      DTS:DTSID="{7025FE7F-DAE4-4ACF-B17D-23C17A40ED3D}"
+      DTS:ObjectName="TextLog.txt">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:FileUsageType="1"
+          DTS:ConnectionString="C:\sc_TeolanGovender_2026\DatabaseAdministration\Mastering-SSIS\Outputs\TextLog.txt" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[TextLog.xml]"
+      DTS:CreationName="FILE"
+      DTS:DTSID="{231A98FB-0493-4BE8-87B1-658F149D921D}"
+      DTS:ObjectName="TextLog.xml">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:FileUsageType="1"
+          DTS:ConnectionString="C:\sc_TeolanGovender_2026\DatabaseAdministration\Mastering-SSIS\Outputs\TextLog.xml" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  <DTS:LogProviders>
+    <DTS:LogProvider
+      DTS:ConfigString="TextLog.txt"
+      DTS:CreationName="Microsoft.LogProviderTextFile"
+      DTS:Description="Writes log entries for events to a CSV file"
+      DTS:DTSID="{CC18730C-107E-4223-A2BD-F3B7CFF77B07}"
+      DTS:ObjectName="SSIS log provider for Text files">
+      <DTS:ObjectData>
+        <InnerObject />
+      </DTS:ObjectData>
+    </DTS:LogProvider>
+    <DTS:LogProvider
+      DTS:CreationName="Microsoft.LogProviderEventLog"
+      DTS:Description="Writes log entries for events to the Event Log"
+      DTS:DTSID="{76C20D63-8DA6-42B5-9C44-1A3DEB1E35E8}"
+      DTS:ObjectName="SSIS log provider for Windows Event Log">
+      <DTS:ObjectData>
+        <InnerObject />
+      </DTS:ObjectData>
+    </DTS:LogProvider>
+    <DTS:LogProvider
+      DTS:ConfigString="TextLog.xml"
+      DTS:CreationName="Microsoft.LogProviderXMLFile"
+      DTS:Description="Writes log entries for events to an XML file"
+      DTS:DTSID="{555F8E5A-E9B9-4840-9642-5CCA2B6C6747}"
+      DTS:ObjectName="SSIS log provider for XML files">
+      <DTS:ObjectData>
+        <InnerObject />
+      </DTS:ObjectData>
+    </DTS:LogProvider>
+  </DTS:LogProviders>
+  <DTS:Variables />
+  <DTS:LoggingOptions
+    DTS:FilterKind="0"
+    DTS:LoggingMode="1">
+    <DTS:Property
+      DTS:DataType="8"
+      DTS:Name="EventFilter">1,7,OnError</DTS:Property>
+    <DTS:Property
+      DTS:EventName="OnError"
+      DTS:Name="ColumnFilter">
+      <DTS:Property
+        DTS:Name="Computer">-1</DTS:Property>
+      <DTS:Property
+        DTS:Name="Operator">-1</DTS:Property>
+      <DTS:Property
+        DTS:Name="SourceName">-1</DTS:Property>
+      <DTS:Property
+        DTS:Name="SourceID">0</DTS:Property>
+      <DTS:Property
+        DTS:Name="ExecutionID">0</DTS:Property>
+      <DTS:Property
+        DTS:Name="MessageText">-1</DTS:Property>
+      <DTS:Property
+        DTS:Name="DataBytes">-1</DTS:Property>
+    </DTS:Property>
+    <DTS:SelectedLogProviders>
+      <DTS:SelectedLogProvider
+        DTS:InstanceID="{CC18730C-107E-4223-A2BD-F3B7CFF77B07}" />
+      <DTS:SelectedLogProvider
+        DTS:InstanceID="{555F8E5A-E9B9-4840-9642-5CCA2B6C6747}" />
+      <DTS:SelectedLogProvider
+        DTS:InstanceID="{76C20D63-8DA6-42B5-9C44-1A3DEB1E35E8}" />
+    </DTS:SelectedLogProviders>
+  </DTS:LoggingOptions>
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Execute SQL Task"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:Description="Execute SQL Task"
+      DTS:DTSID="{E7E2ACCF-6CFB-400D-908F-4D104C471E9D}"
+      DTS:ExecutableType="Microsoft.ExecuteSQLTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Execute SQL Task"
+      DTS:TaskContact="Execute SQL Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ThreadHint="0">
+      <DTS:Variables />
+      <DTS:LoggingOptions
+        DTS:FilterKind="0" />
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          SQLTask:Connection="{DB825A3B-10DA-4223-B380-C0E325A08074}"
+          SQLTask:SqlStatementSource="select 1/0" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask" />
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  <DTS:DesignTimeProperties><![CDATA[<?xml version="1.0"?>
+<!--This CDATA section contains the layout information of the package. The section includes information such as (x,y) coordinates, width, and height.-->
+<!--If you manually edit this section and make a mistake, you can delete it. -->
+<!--The package will still be able to load normally but the previous layout information will be lost and the designer will automatically re-arrange the elements on the design surface.-->
+<Objects
+  Version="8">
+  <!--Each node below will contain properties that do not affect runtime behavior.-->
+  <Package
+    design-time-name="Package">
+    <LayoutInfo>
+      <GraphLayout
+        Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
+        <NodeLayout
+          Size="187,42"
+          Id="Package\Execute SQL Task"
+          TopLeft="427.499983012677,152.533334545559" />
+      </GraphLayout>
+    </LayoutInfo>
+  </Package>
+</Objects>]]></DTS:DesignTimeProperties>
+</DTS:Executable>

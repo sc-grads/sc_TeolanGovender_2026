@@ -1,0 +1,109 @@
+﻿<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="6/15/2026 9:53:53 AM"
+  DTS:CreationName="Microsoft.Package"
+  DTS:CreatorComputerName="LAPTOP-4KISL5TR"
+  DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
+  DTS:DTSID="{41278696-372A-4A20-A77D-6DA3C0C92842}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:LastModifiedProductVersion="17.0.1016.0"
+  DTS:LocaleID="7177"
+  DTS:ObjectName="ForloopContainer2"
+  DTS:PackageType="5"
+  DTS:VersionBuild="3"
+  DTS:VersionGUID="{7CE1FC1F-9C8E-4ED3-B602-A69C8188AC57}">
+  <DTS:Property
+    DTS:Name="PackageFormatVersion">8</DTS:Property>
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{11AE1BD2-70B5-43D0-BA5F-32B2E0375A38}"
+      DTS:ObjectName="LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectRetryCount="1"
+          DTS:ConnectRetryInterval="5"
+          DTS:ConnectionString="Data Source=LAPTOP-4KISL5TR\MSSQLSERVERDEVEL;Initial Catalog=AdventureWorks2014;Provider=SQLNCLI11.1;Integrated Security=SSPI;Application Name=SSIS-ForloopContainer2-{11AE1BD2-70B5-43D0-BA5F-32B2E0375A38}LAPTOP-4KISL5TR\MSSQLSERVERDEVEL.AdventureWorks2014;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  <DTS:Variables>
+    <DTS:Variable
+      DTS:CreationName=""
+      DTS:DTSID="{F10C1F98-9AA3-4600-A01A-7C7593C2FF89}"
+      DTS:IncludeInDebugDump="6789"
+      DTS:Namespace="User"
+      DTS:ObjectName="Counter">
+      <DTS:VariableValue
+        DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+  </DTS:Variables>
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\For Loop Container"
+      DTS:CreationName="STOCK:FORLOOP"
+      DTS:Description="For Loop Container"
+      DTS:DTSID="{c619772a-6feb-4206-87b9-48e88d9bfbba}"
+      DTS:EvalExpression="@Counter &lt; 10"
+      DTS:ExecutableType="STOCK:FORLOOP"
+      DTS:InitExpression="@Counter = 0"
+      DTS:LocaleID="-1"
+      DTS:MaxConcurrent="1"
+      DTS:ObjectName="For Loop Container">
+      <DTS:Variables />
+      <DTS:Executables>
+        <DTS:Executable
+          DTS:refId="Package\For Loop Container\Execute SQL Task"
+          DTS:CreationName="Microsoft.ExecuteSQLTask"
+          DTS:Description="Execute SQL Task"
+          DTS:DTSID="{D1946879-7B21-46AF-8484-FA83685006FE}"
+          DTS:ExecutableType="Microsoft.ExecuteSQLTask"
+          DTS:LocaleID="-1"
+          DTS:ObjectName="Execute SQL Task"
+          DTS:TaskContact="Execute SQL Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+          DTS:ThreadHint="0">
+          <DTS:Variables />
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              SQLTask:Connection="{11AE1BD2-70B5-43D0-BA5F-32B2E0375A38}"
+              SQLTask:SqlStatementSource="DECLARE @RowCount as INT&#xA;SELECT @ROWCOUNT = COUNT(*) FROM OCCUPATION&#xA;&#xA;SELECT @ROWCOUNT as 'RowCount'"
+              SQLTask:ResultType="ResultSetType_SingleRow" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
+              <SQLTask:ResultBinding
+                SQLTask:ResultName="RowCount"
+                SQLTask:DtsVariableName="User::Counter" />
+            </SQLTask:SqlTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
+      </DTS:Executables>
+    </DTS:Executable>
+  </DTS:Executables>
+  <DTS:DesignTimeProperties><![CDATA[<?xml version="1.0"?>
+<!--This CDATA section contains the layout information of the package. The section includes information such as (x,y) coordinates, width, and height.-->
+<!--If you manually edit this section and make a mistake, you can delete it. -->
+<!--The package will still be able to load normally but the previous layout information will be lost and the designer will automatically re-arrange the elements on the design surface.-->
+<Objects
+  Version="8">
+  <!--Each node below will contain properties that do not affect runtime behavior.-->
+  <Package
+    design-time-name="Package">
+    <LayoutInfo>
+      <GraphLayout
+        Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
+        <NodeLayout
+          Size="170,42"
+          Id="Package\For Loop Container\Execute SQL Task"
+          TopLeft="50,57" />
+        <ContainerLayout
+          HeaderHeight="43"
+          IsExpanded="True"
+          PanelSize="290,156"
+          Size="290,199"
+          Id="Package\For Loop Container"
+          TopLeft="583,123" />
+      </GraphLayout>
+    </LayoutInfo>
+  </Package>
+</Objects>]]></DTS:DesignTimeProperties>
+</DTS:Executable>

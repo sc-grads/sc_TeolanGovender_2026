@@ -1,31 +1,31 @@
 ﻿<?xml version="1.0"?>
 <DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
   DTS:refId="Package"
-  DTS:CreationDate="6/12/2026 2:36:27 PM"
+  DTS:CreationDate="6/15/2026 9:17:12 AM"
   DTS:CreationName="Microsoft.Package"
   DTS:CreatorComputerName="LAPTOP-4KISL5TR"
   DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
-  DTS:DTSID="{06E9E617-8AA5-4E31-9FE2-B271FD28E970}"
+  DTS:DTSID="{120C4321-5685-4807-BBCC-539F8E2A08B4}"
   DTS:ExecutableType="Microsoft.Package"
   DTS:LastModifiedProductVersion="17.0.1016.0"
   DTS:LocaleID="7177"
-  DTS:ObjectName="WebServiceTask"
+  DTS:ObjectName="TransferDatabase"
   DTS:PackageType="5"
   DTS:VersionBuild="2"
-  DTS:VersionGUID="{A41B5CDE-34E9-44B3-8B31-50C0354CDAC5}">
+  DTS:VersionGUID="{291C45A1-CB0D-4A64-984B-A9E6A8BB3F38}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:Variables />
   <DTS:Executables>
     <DTS:Executable
-      DTS:refId="Package\Web Service Task"
-      DTS:CreationName="Microsoft.WebServiceTask"
-      DTS:Description="Web Service Task"
-      DTS:DTSID="{77326CF5-21DC-4DFF-9610-7CF16BE7AE06}"
-      DTS:ExecutableType="Microsoft.WebServiceTask"
+      DTS:refId="Package\Transfer Database Task"
+      DTS:CreationName="Microsoft.TransferDatabaseTask"
+      DTS:Description="Transfer Database Task"
+      DTS:DTSID="{3af83d40-ae7c-47c0-8d59-484aaa10ca83}"
+      DTS:ExecutableType="Microsoft.TransferDatabaseTask"
       DTS:LocaleID="-1"
-      DTS:ObjectName="Web Service Task"
-      DTS:TaskContact="Web Service Task; Microsoft Corporation; SQL Server 2025; © 2025 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ObjectName="Transfer Database Task"
+      DTS:TaskContact="Transfer Database Task; Microsoft Corporation; SQL Server 2025; (C) Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
       DTS:ThreadHint="0">
       <DTS:Variables />
       <DTS:ObjectData />
@@ -44,9 +44,9 @@
       <GraphLayout
         Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
         <NodeLayout
-          Size="168,42"
-          Id="Package\Web Service Task"
-          TopLeft="304,173" />
+          Size="197,42"
+          Id="Package\Transfer Database Task"
+          TopLeft="60,60" />
       </GraphLayout>
     </LayoutInfo>
   </Package>
