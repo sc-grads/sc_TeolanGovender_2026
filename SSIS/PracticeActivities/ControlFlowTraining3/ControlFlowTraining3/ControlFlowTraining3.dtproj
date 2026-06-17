@@ -14,8 +14,23 @@
     <Manifest>
       <DTSPackages>
         <DtsPackage FormatVersion="8">
+          <Name>BackupDatabase.dtsx</Name>
+          <FullPath>BackupDatabase.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>CheckDatabaseIntegrity.dtsx</Name>
+          <FullPath>CheckDatabaseIntegrity.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
           <Name>CheckingDynamicTasks.dtsx</Name>
           <FullPath>CheckingDynamicTasks.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>CheckPoints.dtsx</Name>
+          <FullPath>CheckPoints.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -31,6 +46,16 @@
         <DtsPackage FormatVersion="8">
           <Name>DynamicConnectionManager.dtsx</Name>
           <FullPath>DynamicConnectionManager.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>ExecuteSQLServerAgent.dtsx</Name>
+          <FullPath>ExecuteSQLServerAgent.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>ExecuteT-SQLStatement.dtsx</Name>
+          <FullPath>ExecuteT-SQLStatement.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -79,6 +104,11 @@
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
+          <Name>HistoryCleanTask.dtsx</Name>
+          <FullPath>HistoryCleanTask.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
           <Name>LogProviders.dtsx</Name>
           <FullPath>LogProviders.dtsx</FullPath>
           <References />
@@ -94,13 +124,13 @@
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
-          <Name>BackupDatabase.dtsx</Name>
-          <FullPath>BackupDatabase.dtsx</FullPath>
+          <Name>XMLSourceandRawFileDestination.dtsx</Name>
+          <FullPath>XMLSourceandRawFileDestination.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
-          <Name>Package2.dtsx</Name>
-          <FullPath>Package2.dtsx</FullPath>
+          <Name>RawFileSourceAndSSDestination.dtsx</Name>
+          <FullPath>RawFileSourceAndSSDestination.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -119,28 +149,28 @@
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
-          <Name>Package6.dtsx</Name>
-          <FullPath>Package6.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package7.dtsx</Name>
-          <FullPath>Package7.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package8.dtsx</Name>
-          <FullPath>Package8.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package9.dtsx</Name>
-          <FullPath>Package9.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
           <Name>PrecedenceConstraints.dtsx</Name>
           <FullPath>PrecedenceConstraints.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>RebuildIndexesTasks.dtsx</Name>
+          <FullPath>RebuildIndexesTasks.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>ReorganiseIndexTAsk.dtsx</Name>
+          <FullPath>ReorganiseIndexTAsk.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>ShrinkDatabaseDemo.dtsx</Name>
+          <FullPath>ShrinkDatabaseDemo.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>UpdateStatistics.dtsx</Name>
+          <FullPath>UpdateStatistics.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
