@@ -14,6 +14,11 @@
     <Manifest>
       <DTSPackages>
         <DtsPackage FormatVersion="8">
+          <Name>ADONETSourceAndDestination.dtsx</Name>
+          <FullPath>ADONETSourceAndDestination.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
           <Name>BackupDatabase.dtsx</Name>
           <FullPath>BackupDatabase.dtsx</FullPath>
           <References />
@@ -41,6 +46,11 @@
         <DtsPackage FormatVersion="8">
           <Name>ConfigurationTable.dtsx</Name>
           <FullPath>ConfigurationTable.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>DattaReaderDestination.dtsx</Name>
+          <FullPath>DattaReaderDestination.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -124,28 +134,8 @@
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
-          <Name>XMLSourceandRawFileDestination.dtsx</Name>
-          <FullPath>XMLSourceandRawFileDestination.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>RawFileSourceAndSSDestination.dtsx</Name>
-          <FullPath>RawFileSourceAndSSDestination.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package3.dtsx</Name>
-          <FullPath>Package3.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package4.dtsx</Name>
-          <FullPath>Package4.dtsx</FullPath>
-          <References />
-        </DtsPackage>
-        <DtsPackage FormatVersion="8">
-          <Name>Package5.dtsx</Name>
-          <FullPath>Package5.dtsx</FullPath>
+          <Name>LoadDataIncrementally.dtsx</Name>
+          <FullPath>LoadDataIncrementally.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -154,8 +144,18 @@
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
+          <Name>RawFileSourceAndSSDestination.dtsx</Name>
+          <FullPath>RawFileSourceAndSSDestination.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
           <Name>RebuildIndexesTasks.dtsx</Name>
           <FullPath>RebuildIndexesTasks.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>RecordSetDestination.dtsx</Name>
+          <FullPath>RecordSetDestination.dtsx</FullPath>
           <References />
         </DtsPackage>
         <DtsPackage FormatVersion="8">
@@ -176,6 +176,11 @@
         <DtsPackage FormatVersion="8">
           <Name>WMIDataReaderDemo1.dtsx</Name>
           <FullPath>WMIDataReaderDemo1.dtsx</FullPath>
+          <References />
+        </DtsPackage>
+        <DtsPackage FormatVersion="8">
+          <Name>XMLSourceandRawFileDestination.dtsx</Name>
+          <FullPath>XMLSourceandRawFileDestination.dtsx</FullPath>
           <References />
         </DtsPackage>
       </DTSPackages>
