@@ -1,0 +1,36 @@
+name: CI-CD Deployment Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild Engine
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Compile SSIS Project to ISPAC
+        run: |
+          msbuild "TimesheetIntegrationTestTwo.dtproj" /p:Configuration=Development /t:Build
+
+      - name: Deploy to SSISDB via ngrok
+        shell: powershell
+        run: |
+          $manifest = "bin\Development\TimesheetIntegrationTestTwo.ispac"
+          [Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Management.IntegrationServices")
+          
+          $serverEndpoint = "${{ secrets.SQL_PORT }},${{ secrets.SQL_SERVER }}"
+          $conString = "Data Source=$serverEndpoint;Initial Catalog=master;User ID=${{ secrets.SQL_USERNAME }};Password=${{ secrets.SQL_PASSWORD }};"
+          
+          $store = New-Object Microsoft.SqlServer.Management.IntegrationServices.IntegrationServices $conString
+          $catalog = $store.Catalogs["SSISDB"]
+          $folder = $catalog.Folders["PracticeActivities"]
+          
+          # Push deployment to target folder
+          $project = $folder.DeployProject("TimesheetIntegrationTestTwo", [System.IO.File]::ReadAllBytes($manifest))
+          Write-Output "Package deployed successfully!"
