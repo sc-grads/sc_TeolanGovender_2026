@@ -108,18 +108,18 @@ jobs:
 
 # PRODUCTION DEPLOYMENT
   deploy-production:
-  name: Deploy to Production
-  needs: approval-notify
-  if: success()
-  continue-on-error: true
-  uses: ./.github/workflows/deploy-timesheet-template.yml
-  with:
-    database: TimesheetDb
-    #scripts_path: SQL-Project/scripts
-    environment_name: production
-  secrets:
-    sql_username: ${{ secrets.SQL_USERNAME }}
-    sql_password: ${{ secrets.SQL_PASSWORD }}
+    name: Deploy to Production
+    needs: approval-notify
+    if: success()
+    continue-on-error: true
+    uses: ./.github/workflows/deploy-timesheet-template.yml
+    with:
+      database: TimesheetDb
+      #scripts_path: SQL-Project/scripts
+      environment_name: production
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
 # PRODUCTION NOTIFICATION
   production-notify:
