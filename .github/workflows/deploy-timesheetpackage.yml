@@ -112,10 +112,10 @@ jobs:
     needs: approval-notify
     if: success()
     continue-on-error: true
-    uses: ./.github/workflows/deploy-timesheet-template.yml
-    with:
+    uses: ./.github/workflows/deploy-timesheet-template.yml 
+    with: 
       database: TimesheetDb
-      #scripts_path: SQL-Project/scripts
+      #scripts_path: SQL-Project/scripts 
       environment_name: production
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
