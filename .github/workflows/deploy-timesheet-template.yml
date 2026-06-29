@@ -1,0 +1,90 @@
+name: Reusable timesheet Deploy
+ 
+on:
+  workflow_call:
+    inputs:
+      database:
+        required: true
+        type: string
+      scripts_path:
+        required: true
+        type: string
+      environment_name:
+        required: true
+        type: string
+    secrets:
+      sql_username:
+        required: true
+      sql_password:
+        required: true
+ 
+jobs:
+  deploy:
+    name: Deploy Timesheet Database
+    runs-on: windows-latest
+ 
+    environment:
+      name: ${{ inputs.environment_name }}
+ 
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+ 
+      - name: Validate Configuration
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_SERVER }}")) {
+            throw "SQL_SERVER is not configured"
+          }
+ 
+          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_PORT }}")) {
+            throw "SQL_PORT is not configured"
+          }
+ 
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) {
+            throw "SQL_USERNAME is not configured"
+          }
+ 
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) {
+            throw "SQL_PASSWORD is not configured"
+          }
+ 
+      - name: Display Deployment Information
+        shell: powershell
+        run: |
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host "Triggering Remote SSIS Automation via Agent"
+          Write-Host "Environment : ${{ inputs.environment_name }}"
+          Write-Host "Endpoint    : ${{ vars.SQL_SERVER }}"
+          Write-Host "Port        : ${{ vars.SQL_PORT }}"
+          Write-Host "Target DB   : ${{ inputs.database }}"
+          Write-Host "========================================"
+          Write-Host ""
+ 
+      - name: Trigger Remote SSIS Package Job
+        shell: powershell
+        run: |
+          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $user   = "${{ secrets.sql_username }}"
+          $pass   = "${{ secrets.sql_password }}"
+ 
+          # Fires the native job wrapper inside the system MSDB environment over the tunnel
+          sqlcmd -b `
+            -S $server `
+            -U $user `
+            -P $pass `
+            -d "msdb" `
+            -Q "EXEC dbo.sp_start_job @job_name = 'Run_Timesheet_Package';"
+ 
+      - name: Deployment Successful
+        if: success()
+        shell: powershell
+        run: |
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host "SSIS EXECUTION SIGNAL SENT SUCCESSFULLY"
+          Write-Host "Environment : ${{ inputs.environment_name }}"
+          Write-Host "Database    : ${{ inputs.database }}"
+          Write-Host "========================================"
+          Write-Host ""

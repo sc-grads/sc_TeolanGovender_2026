@@ -1,36 +1,158 @@
-name: CI-CD Deployment Pipeline
+name: Timesheet Database Deployment
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'SQL-Project/scripts/**'
 
 jobs:
-  build-and-deploy:
-    runs-on: windows-latest
+# STAGING DEPLOYMENT
+  deploy-staging:
+    name: Deploy to Staging
+    uses: ./.github/workflows/deploy-timesheet-template.yml
+    with:
+      database: TimesheetDb  # Altered to target your project database
+      scripts_path: SQL-Project/scripts
+      environment_name: staging
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
+# STAGING NOTIFICATION
+  staging-notify:
+    name: Notify Staging Success
+    needs: deploy-staging
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
 
-      - name: Setup MSBuild Engine
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Compile SSIS Project to ISPAC
+      - name: Send Staging Success Notification
         run: |
-          msbuild "TimesheetIntegrationTestTwo.dtproj" /p:Configuration=Development /t:Build
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"0078D7\",
+            \"title\":\"Timesheet Integration - Staging Run Successful\",
+            \"summary\":\"Staging SSIS package triggered\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Database\",\"value\":\"TimesheetDb\"},
+                  {\"name\":\"Environment\",\"value\":\"Staging\"},
+                  {\"name\":\"Status\",\"value\":\"SSIS EXECUTION COMMAND SENT\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
 
-      - name: Deploy to SSISDB via ngrok
-        shell: powershell
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
-          $manifest = "bin\Development\TimesheetIntegrationTestTwo.ispac"
-          [Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Management.IntegrationServices")
-          
-          $serverEndpoint = "${{ secrets.SQL_PORT }},${{ secrets.SQL_SERVER }}"
-          $conString = "Data Source=$serverEndpoint;Initial Catalog=master;User ID=${{ secrets.SQL_USERNAME }};Password=${{ secrets.SQL_PASSWORD }};"
-          
-          $store = New-Object Microsoft.SqlServer.Management.IntegrationServices.IntegrationServices $conString
-          $catalog = $store.Catalogs["SSISDB"]
-          $folder = $catalog.Folders["PracticeActivities"]
-          
-          # Push deployment to target folder
-          $project = $folder.DeployProject("TimesheetIntegrationTestTwo", [System.IO.File]::ReadAllBytes($manifest))
-          Write-Output "Package deployed successfully!"
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
+# APPROVAL NOTIFICATION
+  approval-notify:
+    name: Notify Approval Required
+    needs: staging-notify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Create payload
+        run: |
+          cat <<EOF > payload.json
+          {
+            "@type":"MessageCard",
+            "@context":"http://schema.org/extensions",
+            "@themeColor":"FFA500",
+            "title":"⚠️ Approval Required for Production Timesheet Run",
+            "summary":"Manual approval needed",
+            "sections":[
+              {
+                "facts":[
+                  {"name":"Repository","value":"${{ github.repository }}"},
+                  {"name":"Triggered By","value":"${{ github.actor }}"},
+                  {"name":"Database","value":"TimesheetDb"},
+                  {"name":"Time","value":"${{ steps.time.outputs.time }}"}
+                ]
+              }
+            ],
+            "potentialAction":[
+              {
+                  "@type":"OpenUri",
+                  "name":"Approve Deployment",
+                  "targets":[
+                    {
+                      "os":"default",
+                      "uri":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+          }
+          EOF
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
+
+# PRODUCTION DEPLOYMENT
+  deploy-production:
+    name: Deploy to Production
+    needs: approval-notify
+    if: success()
+    uses: ./.github/workflows/deploy-timesheet-template.yml
+    with:
+      database: TimesheetDb  # Altered to target your project database
+      scripts_path: SQL-Project/scripts
+      environment_name: production
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
+
+# PRODUCTION NOTIFICATION
+  production-notify:
+    name: Notify Production Success
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Current Time
+        id: time
+        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
+
+      - name: Send Production Success Notification
+        run: |
+          echo "{
+            \"@type\":\"MessageCard\",
+            \"@context\":\"http://schema.org/extensions\",
+            \"themeColor\":\"28A745\",
+            \"title\":\"🚀 Production Timesheet Processing Completed\",
+            \"summary\":\"Production automated run successful\",
+            \"sections\":[
+              {
+                \"facts\":[
+                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
+                  {\"name\":\"Database\",\"value\":\"TimesheetDb\"},
+                  {\"name\":\"Environment\",\"value\":\"Production\"},
+                  {\"name\":\"Status\",\"value\":\"SUCCESS\"},
+                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
+                ]
+              }
+            ]
+          }" > payload.json
+
+      - name: Send to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"

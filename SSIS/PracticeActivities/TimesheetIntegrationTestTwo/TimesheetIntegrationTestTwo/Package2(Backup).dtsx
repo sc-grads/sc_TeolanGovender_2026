@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
   DTS:refId="Package"
   DTS:CreationDate="6/18/2026 9:02:41 AM"
@@ -12,7 +12,7 @@
   DTS:ObjectName="Package2 Backup"
   DTS:PackageType="5"
   DTS:VersionBuild="141"
-  DTS:VersionGUID="{234D1D32-0532-4DF3-ADA3-AABD0F1999D8}">
+  DTS:VersionGUID="{37121881-05EE-4D07-9678-58FBBB6997C7}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -448,7 +448,7 @@
                           dataType="System.String"
                           description="The SQL command to be executed."
                           name="SqlCommand"
-                          UITypeEditor="Microsoft.DataTransformationServices.Controls.ModalMultilineStringEditor"></property>
+                          UITypeEditor="Microsoft.DataTransformationServices.Controls.ModalMultilineStringEditor, Microsoft.DataTransformationServices.Controls, Version=17.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"></property>
                         <property
                           dataType="System.String"
                           description="The variable that contains the SQL command to be executed."
@@ -736,7 +736,7 @@
                           dataType="System.String"
                           description="The SQL command to be executed."
                           name="SqlCommand"
-                          UITypeEditor="Microsoft.DataTransformationServices.Controls.ModalMultilineStringEditor"></property>
+                          UITypeEditor="Microsoft.DataTransformationServices.Controls.ModalMultilineStringEditor, Microsoft.DataTransformationServices.Controls, Version=17.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"></property>
                         <property
                           dataType="System.Int32"
                           description="Specifies the column code page to use when code page information is unavailable from the data source."
