@@ -111,7 +111,7 @@ jobs:
     name: Deploy to Production
     needs: approval-notify
     if: success()
-    #continue-on-error: true
+    continue-on-error: true
     uses: ./.github/workflows/deploy-timesheet-template.yml 
     with: 
       database: TimesheetDb
