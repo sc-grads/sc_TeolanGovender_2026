@@ -7,5 +7,3 @@ DBCC CHECKIDENT ('dbo.Consultant', RESEED, 0);
 DBCC CHECKIDENT ('dbo.Leave', RESEED, 0);
 
 Truncate table AuditLog
-Truncate table Timesheet_History
-Truncate table Leave_History
