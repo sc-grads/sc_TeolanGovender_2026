@@ -1,7 +1,6 @@
 USE TimesheetDb;
 GO
 
-
 -- 1. DEPLOY STAGING TRUNCATION ENGINE
 CREATE OR ALTER PROCEDURE dbo.usp_TruncateStagingTables
 AS
@@ -13,11 +12,11 @@ BEGIN
 END;
 GO
 
-
 -- 2. DEPLOY MAIN DELTA UPSERT PIPELINE ENGINE
 CREATE OR ALTER PROCEDURE dbo.usp_ProcessStagingToMaster
     @CurrentFilePath VARCHAR(500) = 'Manual Execution / Unknown',
-    @SSISTaskName VARCHAR(200) = 'Stored Procedure Execution'
+    @SSISTaskName VARCHAR(200) = 'Stored Procedure Execution',
+    @PackageRunNumber INT = NULL -- Optional override variable passed from SSIS
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -25,7 +24,12 @@ BEGIN
 
     -- 1. TRACK TIME, EXECUTION USER & RUN METADATA
     DECLARE @CurrentRunNumber INT;
-    SELECT @CurrentRunNumber = ISNULL(MAX(RunNumber), 0) + 1 FROM dbo.AuditLog;
+    
+    -- If SSIS provides a run number, sync on it; otherwise, calculate next sequence number
+    IF @PackageRunNumber IS NOT NULL
+        SET @CurrentRunNumber = @PackageRunNumber;
+    ELSE
+        SELECT @CurrentRunNumber = ISNULL(MAX(RunNumber), 0) + 1 FROM dbo.AuditLog;
 
     DECLARE @ExecutionUser VARCHAR(100) = CAST(SYSTEM_USER AS VARCHAR(100));
 
@@ -118,14 +122,14 @@ BEGIN
     -- 4. WRITE RESTRUCTURED LOGS WITH TARGET SEGMENTATION
     
     -- Log Entry for Timesheets
-    INSERT INTO dbo.AuditLog (RunNumber, FilePath, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
+    INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
     VALUES (
         @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
         @TS_Inserts, @TS_Updates, 0, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
     );
 
     -- Log Entry for Leaves
-    INSERT INTO dbo.AuditLog (RunNumber, FilePath, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
+    INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
     VALUES (
         @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
         @LV_Inserts, @LV_Updates, 0, @ExecutionUser, 'dbo.Leave', DATEDIFF(MILLISECOND, @StartTimeLV, @EndTimeLV)
