@@ -12,8 +12,8 @@
   DTS:MaxErrorCount="9999"
   DTS:ObjectName="Package2"
   DTS:PackageType="5"
-  DTS:VersionBuild="348"
-  DTS:VersionGUID="{22C01AF6-3824-4F5A-852E-8EF9C4B7181B}">
+  DTS:VersionBuild="376"
+  DTS:VersionGUID="{83945F47-4967-4606-8E3E-A0CBCD2EF7DA}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -202,24 +202,6 @@
     </DTS:Variable>
     <DTS:Variable
       DTS:CreationName=""
-      DTS:DTSID="{684EAFD0-D9F2-4D89-A297-53306C4BF152}"
-      DTS:IncludeInDebugDump="6789"
-      DTS:Namespace="User"
-      DTS:ObjectName="CountLeaveDeletions">
-      <DTS:VariableValue
-        DTS:DataType="3">0</DTS:VariableValue>
-    </DTS:Variable>
-    <DTS:Variable
-      DTS:CreationName=""
-      DTS:DTSID="{FF5D6F58-C5CC-411B-9741-FDE990ADA967}"
-      DTS:IncludeInDebugDump="6789"
-      DTS:Namespace="User"
-      DTS:ObjectName="CountLeaveInserts">
-      <DTS:VariableValue
-        DTS:DataType="3">0</DTS:VariableValue>
-    </DTS:Variable>
-    <DTS:Variable
-      DTS:CreationName=""
       DTS:DTSID="{67485AE0-11F8-4A31-9A08-611845D6F3EB}"
       DTS:IncludeInDebugDump="6789"
       DTS:Namespace="User"
@@ -262,6 +244,33 @@
       DTS:ObjectName="LeaveTabExists">
       <DTS:VariableValue
         DTS:DataType="11">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable
+      DTS:CreationName=""
+      DTS:DTSID="{FF5D6F58-C5CC-411B-9741-FDE990ADA967}"
+      DTS:IncludeInDebugDump="6789"
+      DTS:Namespace="User"
+      DTS:ObjectName="RowLeaveCount">
+      <DTS:VariableValue
+        DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable
+      DTS:CreationName=""
+      DTS:DTSID="{684EAFD0-D9F2-4D89-A297-53306C4BF152}"
+      DTS:IncludeInDebugDump="6789"
+      DTS:Namespace="User"
+      DTS:ObjectName="RowTimesheetCount">
+      <DTS:VariableValue
+        DTS:DataType="3">0</DTS:VariableValue>
+    </DTS:Variable>
+    <DTS:Variable
+      DTS:CreationName=""
+      DTS:DTSID="{A962FFAF-0BC3-4A2A-9824-F738F8F7D25E}"
+      DTS:IncludeInDebugDump="6789"
+      DTS:Namespace="User"
+      DTS:ObjectName="RunNumber">
+      <DTS:VariableValue
+        DTS:DataType="3">0</DTS:VariableValue>
     </DTS:Variable>
     <DTS:Variable
       DTS:CreationName=""
@@ -417,7 +426,12 @@
       <DTS:ObjectData>
         <SQLTask:SqlTaskData
           SQLTask:Connection="{586DBD94-516D-4552-B22E-618D96030E36}"
-          SQLTask:SqlStatementSource="EXEC dbo.usp_TruncateStagingTables;" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask" />
+          SQLTask:SqlStatementSource="EXEC dbo.usp_TruncateStagingTables;&#xA;&#xA;SELECT ISNULL(MAX(RunNumber), 0) + 1 AS NewRunNumber &#xA;FROM dbo.AuditLog;"
+          SQLTask:ResultType="ResultSetType_SingleRow" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
+          <SQLTask:ResultBinding
+            SQLTask:ResultName="0"
+            SQLTask:DtsVariableName="User::RunNumber" />
+        </SQLTask:SqlTaskData>
       </DTS:ObjectData>
     </DTS:Executable>
     <DTS:Executable
@@ -437,31 +451,13 @@
       <DTS:ObjectData>
         <SQLTask:SqlTaskData
           SQLTask:Connection="{586DBD94-516D-4552-B22E-618D96030E36}"
-          SQLTask:SqlStatementSource="EXEC dbo.usp_ProcessStagingToMaster;" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
+          SQLTask:SqlStatementSource="DECLARE @PassedRunNo INT = ?;&#xA;&#xA;EXEC dbo.usp_ProcessStagingToMaster &#xA;    @CurrentFilePath = 'Merged To Master Tables', &#xA;    @SSISTaskName = 'Master Tables Processing',&#xA;    @PackageRunNumber = @PassedRunNo;" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
           <SQLTask:ParameterBinding
             SQLTask:ParameterName="0"
-            SQLTask:DtsVariableName="User::FilePath"
-            SQLTask:ParameterDirection="Input"
-            SQLTask:DataType="129"
-            SQLTask:ParameterSize="0" />
-          <SQLTask:ParameterBinding
-            SQLTask:ParameterName="1"
-            SQLTask:DtsVariableName="User::CountInserts"
+            SQLTask:DtsVariableName="User::RunNumber"
             SQLTask:ParameterDirection="Input"
             SQLTask:DataType="3"
-            SQLTask:ParameterSize="1" />
-          <SQLTask:ParameterBinding
-            SQLTask:ParameterName="2"
-            SQLTask:DtsVariableName="User::CountUpdates"
-            SQLTask:ParameterDirection="Input"
-            SQLTask:DataType="3"
-            SQLTask:ParameterSize="2" />
-          <SQLTask:ParameterBinding
-            SQLTask:ParameterName="3"
-            SQLTask:DtsVariableName="User::CountLeaveInserts"
-            SQLTask:ParameterDirection="Input"
-            SQLTask:DataType="3"
-            SQLTask:ParameterSize="3" />
+            SQLTask:ParameterSize="-1" />
         </SQLTask:SqlTaskData>
       </DTS:ObjectData>
     </DTS:Executable>
@@ -518,15 +514,6 @@
               Language="CSharp"
               ReadOnlyVariables="User::FilePath"
               ReadWriteVariables="User::ConsultantFirstName,User::ConsultantLastName,User::FileMonth">
-              <ProjectItem
-                Name="Properties\Settings.settings"
-                Encoding="UTF8"><![CDATA[<?xml version='1.0' encoding='iso-8859-1'?>
-<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
-  <Profiles>
-    <Profile Name="(Default)" />
-  </Profiles>
-  <Settings />
-</SettingsFile>]]></ProjectItem>
               <ProjectItem
                 Name="Properties\Resources.resx"
                 Encoding="UTF8"><![CDATA[<?xml version="1.0" encoding="utf-8"?>
@@ -646,6 +633,35 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 </root>]]></ProjectItem>
+              <ProjectItem
+                Name="Properties\Settings.Designer.cs"
+                Encoding="UTF8"><![CDATA[//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+[assembly: global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Scope="member", Target="ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties.Settings.get_Default():ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties.Sett" +
+    "ings")]
+
+namespace ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties {
+    
+    
+    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
+        
+        [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+        private static Settings defaultInstance = new Settings();
+        
+        public static Settings Default {
+            get {
+                return defaultInstance;
+            }
+        }
+    }
+}]]></ProjectItem>
               <ProjectItem
                 Name="ScriptMain.cs"
                 Encoding="UTF8"><![CDATA[#region Help:  Introduction to the script task
@@ -910,35 +926,6 @@ namespace ST_60eb37b9ed4f4037ae2f29b251c5b383
   </msb:ItemGroup>
 </c:Project>]]></ProjectItem>
               <ProjectItem
-                Name="Properties\Settings.Designer.cs"
-                Encoding="UTF8"><![CDATA[//------------------------------------------------------------------------------
-// <auto-generated>
-//     This code was generated by a tool.
-//
-//     Changes to this file may cause incorrect behavior and will be lost if
-//     the code is regenerated.
-// </auto-generated>
-//------------------------------------------------------------------------------
-
-[assembly: global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Scope="member", Target="ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties.Settings.get_Default():ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties.Sett" +
-    "ings")]
-
-namespace ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties {
-    
-    
-    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
-        
-        [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-        private static Settings defaultInstance = new Settings();
-        
-        public static Settings Default {
-            get {
-                return defaultInstance;
-            }
-        }
-    }
-}]]></ProjectItem>
-              <ProjectItem
                 Name="Properties\AssemblyInfo.cs"
                 Encoding="UTF8"><![CDATA[using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -968,6 +955,15 @@ using System.Runtime.CompilerServices;
 // by using the '*' as shown below:
 
 [assembly: AssemblyVersion("1.0.*")]]]></ProjectItem>
+              <ProjectItem
+                Name="Properties\Settings.settings"
+                Encoding="UTF8"><![CDATA[<?xml version='1.0' encoding='iso-8859-1'?>
+<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
+  <Profiles>
+    <Profile Name="(Default)" />
+  </Profiles>
+  <Settings />
+</SettingsFile>]]></ProjectItem>
               <ProjectItem
                 Name="Properties\Resources.Designer.cs"
                 Encoding="UTF8"><![CDATA[//------------------------------------------------------------------------------
@@ -2059,6 +2055,35 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                             </output>
                           </outputs>
                         </component>
+                        <component
+                          refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count"
+                          componentClassID="Microsoft.RowCount"
+                          contactInfo="Row Count;Microsoft Corporation; Microsoft SQL Server; (C) Microsoft Corporation; All Rights Reserved; http://www.microsoft.com/sql/support;0"
+                          description="Counts rows as they pass through a data flow. For example, use the number of rows processed to determine whether or not to perform cleanup operations, or update text in an e-mail message to communicate processing status."
+                          name="Row Count">
+                          <properties>
+                            <property
+                              dataType="System.String"
+                              description="Specifies the variable to hold the row count."
+                              name="VariableName">User::RowTimesheetCount</property>
+                          </properties>
+                          <inputs>
+                            <input
+                              refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count.Inputs[Row Count Input 1]"
+                              hasSideEffects="true"
+                              name="Row Count Input 1">
+                              <externalMetadataColumns />
+                            </input>
+                          </inputs>
+                          <outputs>
+                            <output
+                              refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count.Outputs[Row Count Output 1]"
+                              name="Row Count Output 1"
+                              synchronousInputId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count.Inputs[Row Count Input 1]">
+                              <externalMetadataColumns />
+                            </output>
+                          </outputs>
+                        </component>
                       </components>
                       <paths>
                         <path
@@ -2073,7 +2098,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                           startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Outputs[Data Conversion Output]" />
                         <path
                           refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Derived Column Output]"
-                          endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination.Inputs[OLE DB Destination Input]"
+                          endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count.Inputs[Row Count Input 1]"
                           name="Derived Column Output"
                           startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Derived Column.Outputs[Derived Column Output]" />
                         <path
@@ -2081,6 +2106,11 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                           endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Inputs[Data Conversion Input]"
                           name="Excel Source Output"
                           startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Excel Source.Outputs[Excel Source Output]" />
+                        <path
+                          refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Row Count Output 1]"
+                          endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination.Inputs[OLE DB Destination Input]"
+                          name="Row Count Output 1"
+                          startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count.Outputs[Row Count Output 1]" />
                       </paths>
                     </pipeline>
                   </DTS:ObjectData>
@@ -2860,6 +2890,35 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                         </output>
                       </outputs>
                     </component>
+                    <component
+                      refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count"
+                      componentClassID="Microsoft.RowCount"
+                      contactInfo="Row Count;Microsoft Corporation; Microsoft SQL Server; (C) Microsoft Corporation; All Rights Reserved; http://www.microsoft.com/sql/support;0"
+                      description="Counts rows as they pass through a data flow. For example, use the number of rows processed to determine whether or not to perform cleanup operations, or update text in an e-mail message to communicate processing status."
+                      name="Row Count">
+                      <properties>
+                        <property
+                          dataType="System.String"
+                          description="Specifies the variable to hold the row count."
+                          name="VariableName">User::RowLeaveCount</property>
+                      </properties>
+                      <inputs>
+                        <input
+                          refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count.Inputs[Row Count Input 1]"
+                          hasSideEffects="true"
+                          name="Row Count Input 1">
+                          <externalMetadataColumns />
+                        </input>
+                      </inputs>
+                      <outputs>
+                        <output
+                          refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count.Outputs[Row Count Output 1]"
+                          name="Row Count Output 1"
+                          synchronousInputId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count.Inputs[Row Count Input 1]">
+                          <externalMetadataColumns />
+                        </output>
+                      </outputs>
+                    </component>
                   </components>
                   <paths>
                     <path
@@ -2874,7 +2933,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                       startId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Data Conversion.Outputs[Data Conversion Output]" />
                     <path
                       refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave.Paths[Derived Column Output]"
-                      endId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\OLE DB Destination.Inputs[OLE DB Destination Input]"
+                      endId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count.Inputs[Row Count Input 1]"
                       name="Derived Column Output"
                       startId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Derived Column 1.Outputs[Derived Column Output]" />
                     <path
@@ -2882,6 +2941,11 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                       endId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Data Conversion.Inputs[Data Conversion Input]"
                       name="Excel Source Output"
                       startId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Excel Source.Outputs[Excel Source Output]" />
+                    <path
+                      refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave.Paths[Row Count Output 1]"
+                      endId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\OLE DB Destination.Inputs[OLE DB Destination Input]"
+                      name="Row Count Output 1"
+                      startId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count.Outputs[Row Count Output 1]" />
                   </paths>
                 </pipeline>
               </DTS:ObjectData>
@@ -3558,8 +3622,63 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
               DTS:To="Package\Foreach File Loop\Sequence Container B\DFT_Leave" />
           </DTS:PrecedenceConstraints>
         </DTS:Executable>
+        <DTS:Executable
+          DTS:refId="Package\Foreach File Loop\SQL Log File"
+          DTS:CreationName="Microsoft.ExecuteSQLTask"
+          DTS:Description="Execute SQL Task"
+          DTS:DTSID="{F9BAFE76-A167-49A0-B3D6-0D030BDB2C85}"
+          DTS:ExecutableType="Microsoft.ExecuteSQLTask"
+          DTS:LocaleID="-1"
+          DTS:ObjectName="SQL Log File"
+          DTS:ThreadHint="0">
+          <DTS:Variables />
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              SQLTask:Connection="{586DBD94-516D-4552-B22E-618D96030E36}"
+              SQLTask:SqlStatementSource="INSERT INTO dbo.AuditLog (&#xA;    RunNumber, &#xA;    LogSource, &#xA;    TaskName, &#xA;    LogStatus, &#xA;    RowsInserted, -- Total Rows Extracted to Staging&#xA;    RowsUpdated, &#xA;    RowsDeleted, &#xA;    ExecutedBy, &#xA;    TargetTable, &#xA;    ExecutionDurationMs&#xA;)&#xA;VALUES (&#xA;    ?, -- Maps to User::RunNumber&#xA;    ?, -- Maps to User::FilePath&#xA;    ?, -- Maps to System::TaskName&#xA;    'STAGED', &#xA;    ? + ?, -- Adds Timesheet + Leave rows extracted from this file&#xA;    0, &#xA;    0, &#xA;    CAST(SYSTEM_USER AS VARCHAR(100)), &#xA;    'stg.Extraction', &#xA;    0&#xA;);" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
+              <SQLTask:ParameterBinding
+                SQLTask:ParameterName="0"
+                SQLTask:DtsVariableName="User::RunNumber"
+                SQLTask:ParameterDirection="Input"
+                SQLTask:DataType="3"
+                SQLTask:ParameterSize="-1" />
+              <SQLTask:ParameterBinding
+                SQLTask:ParameterName="1"
+                SQLTask:DtsVariableName="User::FilePath"
+                SQLTask:ParameterDirection="Input"
+                SQLTask:DataType="129"
+                SQLTask:ParameterSize="-1" />
+              <SQLTask:ParameterBinding
+                SQLTask:ParameterName="2"
+                SQLTask:DtsVariableName="System::TaskName"
+                SQLTask:ParameterDirection="Input"
+                SQLTask:DataType="129"
+                SQLTask:ParameterSize="-1" />
+              <SQLTask:ParameterBinding
+                SQLTask:ParameterName="3"
+                SQLTask:DtsVariableName="User::RowTimesheetCount"
+                SQLTask:ParameterDirection="Input"
+                SQLTask:DataType="3"
+                SQLTask:ParameterSize="-1" />
+              <SQLTask:ParameterBinding
+                SQLTask:ParameterName="4"
+                SQLTask:DtsVariableName="User::RowLeaveCount"
+                SQLTask:ParameterDirection="Input"
+                SQLTask:DataType="3"
+                SQLTask:ParameterSize="-1" />
+            </SQLTask:SqlTaskData>
+          </DTS:ObjectData>
+        </DTS:Executable>
       </DTS:Executables>
       <DTS:PrecedenceConstraints>
+        <DTS:PrecedenceConstraint
+          DTS:refId="Package\Foreach File Loop.PrecedenceConstraints[Constraint]"
+          DTS:CreationName=""
+          DTS:DTSID="{C3096DCE-911A-428F-BAAA-476018AE6273}"
+          DTS:From="Package\Foreach File Loop\Sequence Container B"
+          DTS:LogicalAnd="True"
+          DTS:ObjectName="Constraint"
+          DTS:To="Package\Foreach File Loop\SQL Log File" />
         <DTS:PrecedenceConstraint
           DTS:refId="Package\Foreach File Loop.PrecedenceConstraints[Constraint 1]"
           DTS:CreationName=""
@@ -3640,6 +3759,14 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
     <LayoutInfo>
       <GraphLayout
         Capacity="32" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph" xmlns:mssgle="clr-namespace:Microsoft.SqlServer.Graph.LayoutEngine;assembly=Microsoft.SqlServer.Graph" xmlns:assembly="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mssgm="clr-namespace:Microsoft.SqlServer.Graph.Model;assembly=Microsoft.SqlServer.Graph">
+        <NodeLayout
+          Size="160,42"
+          Id="Package\Clean-up Tables"
+          TopLeft="306.271284271284,37.8975468975472" />
+        <NodeLayout
+          Size="170,42"
+          Id="Package\Execute SQL Task"
+          TopLeft="301.210678210675,669.215007215007" />
         <NodeLayout
           Size="134,42"
           Id="Package\Foreach File Loop\Script Task"
@@ -3729,6 +3856,44 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           Size="249,282"
           Id="Package\Foreach File Loop\Sequence Container B"
           TopLeft="386.747474747475,69.4242424242426" />
+        <NodeLayout
+          Size="143,42"
+          Id="Package\Foreach File Loop\SQL Log File"
+          TopLeft="411,395" />
+        <EdgeLayout
+          Id="Package\Foreach File Loop.PrecedenceConstraints[Constraint]"
+          TopLeft="511.247474747475,351.424242424243">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="-28.747474747475,43.5757575757574"
+              Start="0,0"
+              End="-28.747474747475,36.0757575757574">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,17.7878787878787" />
+                  <mssgle:CubicBezierSegment
+                    Point1="0,17.7878787878787"
+                    Point2="0,21.7878787878787"
+                    Point3="-4,21.7878787878787" />
+                  <mssgle:LineSegment
+                    End="-24.747474747475,21.7878787878787" />
+                  <mssgle:CubicBezierSegment
+                    Point1="-24.747474747475,21.7878787878787"
+                    Point2="-28.747474747475,21.7878787878787"
+                    Point3="-28.747474747475,25.7878787878787" />
+                  <mssgle:LineSegment
+                    End="-28.747474747475,36.0757575757574" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
         <EdgeLayout
           Id="Package\Foreach File Loop.PrecedenceConstraints[Constraint 1]"
           TopLeft="305.222222222222,212.878787878788">
@@ -3776,32 +3941,24 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         <ContainerLayout
           HeaderHeight="43"
           IsExpanded="True"
-          PanelSize="670,375"
-          Size="670,418"
+          PanelSize="670,452"
+          Size="670,495"
           Id="Package\Foreach File Loop"
-          TopLeft="54.3888888888891,110.960317460318" />
-        <NodeLayout
-          Size="160,42"
-          Id="Package\Clean-up Tables"
-          TopLeft="306.271284271284,37.8975468975472" />
-        <NodeLayout
-          Size="170,42"
-          Id="Package\Execute SQL Task"
-          TopLeft="306.210678210675,573.215007215007" />
+          TopLeft="55.3888888888891,109.960317460318" />
         <EdgeLayout
           Id="Package.PrecedenceConstraints[Constraint]"
-          TopLeft="387.830086580086,79.8975468975472">
+          TopLeft="388.330086580087,79.8975468975472">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
-              EndConnector="0,31.0627705627704"
+              EndConnector="0,30.0627705627708"
               Start="0,0"
-              End="0,23.5627705627704">
+              End="0,22.5627705627708">
               <mssgle:Curve.Segments>
                 <mssgle:SegmentCollection
                   Capacity="5">
                   <mssgle:LineSegment
-                    End="0,23.5627705627704" />
+                    End="0,22.5627705627708" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>
@@ -3812,18 +3969,18 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         </EdgeLayout>
         <EdgeLayout
           Id="Package.PrecedenceConstraints[Constraint 1]"
-          TopLeft="390.299783549782,528.960317460318">
+          TopLeft="388.299783549782,604.960317460318">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
-              EndConnector="0,44.2546897546898"
+              EndConnector="0,64.2546897546889"
               Start="0,0"
-              End="0,36.7546897546898">
+              End="0,56.7546897546889">
               <mssgle:Curve.Segments>
                 <mssgle:SegmentCollection
                   Capacity="5">
                   <mssgle:LineSegment
-                    End="0,36.7546897546898" />
+                    End="0,56.7546897546889" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>
@@ -3845,57 +4002,25 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Excel Source"
           TopLeft="426.166650606527,26.533334028986" />
         <NodeLayout
-          Size="195,42"
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination"
-          TopLeft="386.333317504989,348.666669525041" />
+          Size="176,42"
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion"
+          TopLeft="401.499984006088,98.866667913331" />
         <NodeLayout
           Size="173,42"
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Conditional Split"
           TopLeft="404.333316908943,180.733335206774" />
         <NodeLayout
+          Size="133,42"
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Row Count"
+          TopLeft="446,340" />
+        <NodeLayout
+          Size="195,42"
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination"
+          TopLeft="394.333317504989,405.666669525041" />
+        <NodeLayout
           Size="158,42"
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Derived Column"
           TopLeft="421,269" />
-        <NodeLayout
-          Size="176,42"
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion"
-          TopLeft="401.499984006088,98.866667913331" />
-        <EdgeLayout
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Derived Column Output]"
-          TopLeft="500,311">
-          <EdgeLayout.Curve>
-            <mssgle:Curve
-              StartConnector="{assembly:Null}"
-              EndConnector="-16.166682495011,37.666669525041"
-              Start="0,0"
-              End="-16.166682495011,30.166669525041">
-              <mssgle:Curve.Segments>
-                <mssgle:SegmentCollection
-                  Capacity="5">
-                  <mssgle:LineSegment
-                    End="0,14.8333347625205" />
-                  <mssgle:CubicBezierSegment
-                    Point1="0,14.8333347625205"
-                    Point2="0,18.8333347625205"
-                    Point3="-4,18.8333347625205" />
-                  <mssgle:LineSegment
-                    End="-12.166682495011,18.8333347625205" />
-                  <mssgle:CubicBezierSegment
-                    Point1="-12.166682495011,18.8333347625205"
-                    Point2="-16.166682495011,18.8333347625205"
-                    Point3="-16.166682495011,22.8333347625205" />
-                  <mssgle:LineSegment
-                    End="-16.166682495011,30.166669525041" />
-                </mssgle:SegmentCollection>
-              </mssgle:Curve.Segments>
-            </mssgle:Curve>
-          </EdgeLayout.Curve>
-          <EdgeLayout.Labels>
-            <mssgm:EdgeLabel
-              BoundingBox="0,0,0,0"
-              RelativePosition="Any" />
-          </EdgeLayout.Labels>
-        </EdgeLayout>
         <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Data Conversion Output]"
           TopLeft="490.166650457516,140.866667913331">
@@ -3957,6 +4082,42 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Row Count Output 1]"
+          TopLeft="512.5,382">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="-20.666682495011,23.666669525041"
+              Start="0,0"
+              End="-20.666682495011,16.166669525041">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,7.83333476252051" />
+                  <mssgle:CubicBezierSegment
+                    Point1="0,7.83333476252051"
+                    Point2="0,11.8333347625205"
+                    Point3="-4,11.8333347625205" />
+                  <mssgle:LineSegment
+                    End="-16.666682495011,11.8333347625205" />
+                  <mssgle:CubicBezierSegment
+                    Point1="-16.666682495011,11.8333347625205"
+                    Point2="-20.666682495011,11.8333347625205"
+                    Point3="-20.666682495011,15.8333347625205" />
+                  <mssgle:LineSegment
+                    End="-20.666682495011,16.166669525041" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Excel Source Output]"
           TopLeft="504.166650606527,68.533334028986">
           <EdgeLayout.Curve>
@@ -3992,6 +4153,42 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
               RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
+        <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Derived Column Output]"
+          TopLeft="500,311">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="12.5,29"
+              Start="0,0"
+              End="12.5,21.5">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,10.5" />
+                  <mssgle:CubicBezierSegment
+                    Point1="0,10.5"
+                    Point2="0,14.5"
+                    Point3="4,14.5" />
+                  <mssgle:LineSegment
+                    End="8.5,14.5" />
+                  <mssgle:CubicBezierSegment
+                    Point1="8.5,14.5"
+                    Point2="12.5,14.5"
+                    Point3="12.5,18.5" />
+                  <mssgle:LineSegment
+                    End="12.5,21.5" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
       </GraphLayout>
     </LayoutInfo>
   </TaskHost>
@@ -4001,25 +4198,53 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
       <GraphLayout
         Capacity="16" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph" xmlns:mssgle="clr-namespace:Microsoft.SqlServer.Graph.LayoutEngine;assembly=Microsoft.SqlServer.Graph" xmlns:assembly="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mssgm="clr-namespace:Microsoft.SqlServer.Graph.Model;assembly=Microsoft.SqlServer.Graph">
         <NodeLayout
+          Size="144,42"
+          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Excel Source"
+          TopLeft="477,18" />
+        <NodeLayout
           Size="177,42"
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\OLE DB Destination"
-          TopLeft="458,355.444444444444" />
+          TopLeft="454,420.444444444444" />
         <NodeLayout
           Size="158,42"
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Derived Column 1"
           TopLeft="470.818181818182,248.363636363636" />
         <NodeLayout
-          Size="161,42"
-          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Data Conversion"
-          TopLeft="467.636363636364,89.5454545454545" />
-        <NodeLayout
-          Size="144,42"
-          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Excel Source"
-          TopLeft="477,18" />
+          Size="133,42"
+          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Row Count"
+          TopLeft="481,329" />
         <NodeLayout
           Size="159,42"
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Conditional Split"
           TopLeft="466.636363636364,165.272727272727" />
+        <NodeLayout
+          Size="161,42"
+          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave\Data Conversion"
+          TopLeft="467.636363636364,89.5454545454545" />
+        <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave.Paths[Row Count Output 1]"
+          TopLeft="545,371">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,49.444444444444"
+              Start="0,0"
+              End="0,41.944444444444">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,41.944444444444" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
         <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave.Paths[Excel Source Output]"
           TopLeft="548.568181818182,60">
@@ -4046,18 +4271,18 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         </EdgeLayout>
         <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave.Paths[Derived Column Output]"
-          TopLeft="548.159090909091,290.363636363636">
+          TopLeft="548.659090909091,290.363636363636">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
-              EndConnector="0,65.0808080808084"
+              EndConnector="0,38.636363636364"
               Start="0,0"
-              End="0,57.5808080808084">
+              End="0,31.136363636364">
               <mssgle:Curve.Segments>
                 <mssgle:SegmentCollection
                   Capacity="5">
                   <mssgle:LineSegment
-                    End="0,57.5808080808084" />
+                    End="0,31.136363636364" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>

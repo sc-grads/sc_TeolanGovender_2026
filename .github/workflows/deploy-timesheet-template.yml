@@ -6,9 +6,6 @@ on:
       database:
         required: true
         type: string
-      scripts_path:
-        required: true
-        type: string
       environment_name:
         required: true
         type: string
@@ -33,35 +30,41 @@ jobs:
       - name: Validate Configuration
         shell: powershell
         run: |
-          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_SERVER }}")) {
-            throw "SQL_SERVER is not configured"
-          }
+          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_SERVER }}")) { throw "SQL_SERVER is not configured" }
+          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_PORT }}")) { throw "SQL_PORT is not configured" }
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) { throw "SQL_USERNAME is not configured" }
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "SQL_PASSWORD is not configured" }
  
-          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_PORT }}")) {
-            throw "SQL_PORT is not configured"
-          }
- 
-          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) {
-            throw "SQL_USERNAME is not configured"
-          }
- 
-          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) {
-            throw "SQL_PASSWORD is not configured"
-          }
- 
-      - name: Display Deployment Information
+      - name: Run Pre-Flight Database Scripts
         shell: powershell
         run: |
-          Write-Host ""
-          Write-Host "========================================"
-          Write-Host "Triggering Remote SSIS Automation via Agent"
-          Write-Host "Environment : ${{ inputs.environment_name }}"
-          Write-Host "Endpoint    : ${{ vars.SQL_SERVER }}"
-          Write-Host "Port        : ${{ vars.SQL_PORT }}"
-          Write-Host "Target DB   : ${{ inputs.database }}"
-          Write-Host "========================================"
-          Write-Host ""
- 
+          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $user   = "${{ secrets.sql_username }}"
+          $pass   = "${{ secrets.sql_password }}"
+          $db     = "${{ inputs.database }}"
+          
+          # Exact sequential list of pre-flight SQL files
+          $sqlFiles = @(
+            "CreateDatabase.sql",
+            "CreateTables.sql",
+            "CreateIndexes.sql",
+            "CreateStoredProcedure.sql"
+          )
+
+          Write-Host "Starting Pre-Flight Database Executions..."
+          
+          foreach ($file in $sqlFiles) {
+            $filePath = "SSIS-Project\Scripts\$file"
+            if (Test-Path $filePath) {
+              Write-Host "Executing: $file"
+              # -b forces sqlcmd to exit and fail the step if a SQL script raises an error
+              sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
+            } else {
+              throw "Critical pre-flight file missing from workspace: $filePath"
+            }
+          }
+          Write-Host "Pre-flight checks passed successfully."
+
       - name: Trigger Remote SSIS Package Job
         shell: powershell
         run: |
@@ -69,7 +72,7 @@ jobs:
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
  
-          # Fires the native job wrapper inside the system MSDB environment over the tunnel
+          Write-Host "Triggering Remote SSIS Automation via Agent..."
           sqlcmd -b `
             -S $server `
             -U $user `
@@ -81,10 +84,7 @@ jobs:
         if: success()
         shell: powershell
         run: |
-          Write-Host ""
           Write-Host "========================================"
-          Write-Host "SSIS EXECUTION SIGNAL SENT SUCCESSFULLY"
+          Write-Host "PRE-FLIGHT AND SSIS EXECUTION SIGNAL COMPLETED"
           Write-Host "Environment : ${{ inputs.environment_name }}"
-          Write-Host "Database    : ${{ inputs.database }}"
           Write-Host "========================================"
-          Write-Host ""

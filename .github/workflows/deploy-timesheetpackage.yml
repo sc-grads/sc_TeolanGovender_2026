@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'SQL-Project/scripts/**'
+      - 'SSIS-Project/Timesheets/**'
+      - 'SSIS-Project/Scripts/**'
 
 jobs:
-# STAGING DEPLOYMENT
+# STAGING DEPLOYMENT (Runs Pre-flight SQL scripts + Triggers SSIS)
   deploy-staging:
     name: Deploy to Staging
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
       database: TimesheetDb
-      scripts_path: SQL-Project/scripts
       environment_name: staging
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
@@ -43,7 +43,7 @@ jobs:
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
                   {\"name\":\"Database\",\"value\":\"TimesheetDb\"},
                   {\"name\":\"Environment\",\"value\":\"Staging\"},
-                  {\"name\":\"Status\",\"value\":\"SSIS EXECUTION COMMAND SENT\"},
+                  {\"name\":\"Status\",\"value\":\"PRE-FLIGHT & SSIS EXECUTION SENT\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
                 ]
               }
@@ -56,65 +56,13 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
-# APPROVAL NOTIFICATION
-  approval-notify:
-    name: Notify Approval Required
-    needs: staging-notify
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
-
-      - name: Create payload
-        run: |
-          cat <<EOF > payload.json
-          {
-            "@type":"MessageCard",
-            "@context":"http://schema.org/extensions",
-            "@themeColor":"FFA500",
-            "title":"⚠️ Approval Required for Production Timesheet Run",
-            "summary":"Manual approval needed",
-            "sections":[
-              {
-                "facts":[
-                  {"name":"Repository","value":"${{ github.repository }}"},
-                  {"name":"Triggered By","value":"${{ github.actor }}"},
-                  {"name":"Database","value":"TimesheetDb"},
-                  {"name":"Time","value":"${{ steps.time.outputs.time }}"}
-                ]
-              }
-            ],
-            "potentialAction":[
-              {
-                  "@type":"OpenUri",
-                  "name":"Approve Deployment",
-                  "targets":[
-                    {
-                      "os":"default",
-                      "uri":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    }
-                  ]
-                }
-              ]
-          }
-          EOF
-
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
-
-# PRODUCTION DEPLOYMENT
+# PRODUCTION DEPLOYMENT 
   deploy-production:
     name: Deploy to Production
-    needs: approval-notify
-    if: success()
+    needs: deploy-staging
     uses: ./.github/workflows/deploy-timesheet-template.yml 
     with: 
       database: TimesheetDb
-      scripts_path: SQL-Project/scripts 
       environment_name: production
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
