@@ -149,8 +149,10 @@ jobs:
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
-          $db     = "${{ inputs.database }}"
 
+          # 1. Write the clean T-SQL script directly to a file to prevent sqlcmd parsing bugs
+          $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
+          
           $provisionJobSql = @"
           USE [msdb];
           SET NOCOUNT ON;
@@ -179,8 +181,13 @@ jobs:
           EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
           "@
 
+          # Output T-SQL directly to workspace
+          Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
+
           Write-Host "Provisioning fresh target job template execution parameters..."
-          sqlcmd -b -S $server -U $user -P $pass -d "msdb" -Q $provisionJobSql
+          
+          # 2. Feed the file input (-i) directly to sqlcmd safely
+          sqlcmd -b -S $server -U $user -P $pass -d "msdb" -i $jobScriptPath
  
       - name: Deployment Successful
         if: success()
