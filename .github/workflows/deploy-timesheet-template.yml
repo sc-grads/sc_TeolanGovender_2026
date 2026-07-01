@@ -108,8 +108,8 @@ jobs:
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
-          # Direct, hardcoded relative path matching your repository structure
-          $ispacPath = "$pwd\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
+          # Uses the exact workspace root variable provided by GitHub Actions
+          $ispacPath = "$env:GITHUB_WORKSPACE\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
           
           if (-not (Test-Path $ispacPath)) {
               throw "Critical Error: Could not locate the .ispac file at expected path: $ispacPath. Verify the casing and folder structure in your GitHub repo."
