@@ -35,17 +35,18 @@ jobs:
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) { throw "SQL_USERNAME is not configured" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "SQL_PASSWORD is not configured" }
 
-      - name: 1. Initialize SSISDB and Folders
+      - name: 1. Initialize SSISDB Catalog
         shell: powershell
         run: |
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
+          # T-SQL to enable CLR and create SSISDB if missing (Skipping folder creation to avoid SQL Auth block)
           $setupSql = @"
           SET NOCOUNT ON;
 
-          -- Enable CLR Engine
+          -- 1. Enable CLR Engine (Prerequisite for hosting SSISDB features)
           IF (SELECT value_in_use FROM sys.configurations WHERE name = 'clr enabled') = 0
           BEGIN
               PRINT 'Enabling CLR...';
@@ -53,31 +54,19 @@ jobs:
               RECONFIGURE;
           END
 
-          -- Instantiate the SSISDB catalog if absent
+          -- 2. Dynamically instantiate the SSISDB catalog if it is absent
           IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SSISDB')
           BEGIN
               PRINT 'SSISDB catalog not found. Provisioning fresh integration catalog...';
               EXEC [master].[dbo].[xp_instance_regwrite] N'HKEY_LOCAL_MACHINE', N'SOFTWARE\Microsoft\MSSQLServer\SSISDB', N'ServerRequiresEncryption', REG_DWORD, 1;
               
-              DECLARE @catalog_password NVARCHAR(128) = N'P@ssword12345!'; 
+              DECLARE @catalog_password NVARCHAR(128) = N'Password@123'; 
               EXEC [catalog].[create_catalog] @password = @catalog_password;
               PRINT 'SSISDB Catalog built successfully.';
           END
           ELSE
           BEGIN
               PRINT 'SSISDB Catalog already provisioned on destination.';
-          END
-
-          -- Provision deployment folder inside SSIS database environment
-          IF NOT EXISTS (SELECT * FROM [SSISDB].[catalog].[folders] WHERE name = 'TimesheetDeployments')
-          BEGIN
-              PRINT 'Creating SSIS catalog management folder: TimesheetDeployments...';
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N'TimesheetDeployments';
-              PRINT 'Catalog directory structure added.';
-          END
-          ELSE
-          BEGIN
-              PRINT 'SSIS Folder structures for TimesheetDeployments already validated.';
           END
           "@
 
