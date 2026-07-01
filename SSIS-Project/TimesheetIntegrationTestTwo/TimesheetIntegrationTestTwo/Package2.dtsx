@@ -12,8 +12,8 @@
   DTS:MaxErrorCount="9999"
   DTS:ObjectName="Package2"
   DTS:PackageType="5"
-  DTS:VersionBuild="383"
-  DTS:VersionGUID="{186BBCEB-E1FF-4099-A402-DCA09CA08BFA}">
+  DTS:VersionBuild="382"
+  DTS:VersionGUID="{B7123B23-9464-4A53-AAE3-5B7F708D5F36}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -3820,32 +3820,32 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         <NodeLayout
           Size="136,42"
           Id="Package\Foreach File Loop\Sequence Container B\DFT_Leave"
-          TopLeft="55.1313131313134,109.439393939394" />
+          TopLeft="54.2222222222225,142.166666666667" />
         <NodeLayout
           Size="201,42"
           Id="Package\Foreach File Loop\Sequence Container B\SCR_Check_Leave_Tab"
           TopLeft="26.2222222222222,26.6666666666667" />
         <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container B.PrecedenceConstraints[Constraint]"
-          TopLeft="124.926767676768,68.6666666666667">
+          TopLeft="124.472222222222,68.6666666666667">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
-              EndConnector="0,40.7727272727276"
+              EndConnector="0,73.5000000000003"
               Start="0,0"
-              End="0,33.2727272727276">
+              End="0,66.0000000000003">
               <mssgle:Curve.Segments>
                 <mssgle:SegmentCollection
                   Capacity="5">
                   <mssgle:LineSegment
-                    End="0,33.2727272727276" />
+                    End="0,66.0000000000003" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
             <mssgm:EdgeLabel
-              BoundingBox="-8,8.63636363636379,16,16"
+              BoundingBox="-8,25.0000000000001,16,16"
               RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>

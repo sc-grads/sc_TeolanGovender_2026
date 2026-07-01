@@ -120,7 +120,6 @@ BEGIN
 
 
     -- 4. WRITE RESTRUCTURED LOGS WITH TARGET SEGMENTATION
-    
     -- Log Entry for Timesheets
     INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
     VALUES (

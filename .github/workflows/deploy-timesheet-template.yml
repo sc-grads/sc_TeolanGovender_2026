@@ -34,6 +34,55 @@ jobs:
           if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_PORT }}")) { throw "SQL_PORT is not configured" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) { throw "SQL_USERNAME is not configured" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "SQL_PASSWORD is not configured" }
+
+      - name: 1. Initialize SSISDB and Folders
+        shell: powershell
+        run: |
+          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $user   = "${{ secrets.sql_username }}"
+          $pass   = "${{ secrets.sql_password }}"
+
+          $setupSql = @"
+          SET NOCOUNT ON;
+
+          -- Enable CLR Engine
+          IF (SELECT value_in_use FROM sys.configurations WHERE name = 'clr enabled') = 0
+          BEGIN
+              PRINT 'Enabling CLR...';
+              EXEC sp_configure 'clr enabled', 1;
+              RECONFIGURE;
+          END
+
+          -- Instantiate the SSISDB catalog if absent
+          IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SSISDB')
+          BEGIN
+              PRINT 'SSISDB catalog not found. Provisioning fresh integration catalog...';
+              EXEC [master].[dbo].[xp_instance_regwrite] N'HKEY_LOCAL_MACHINE', N'SOFTWARE\Microsoft\MSSQLServer\SSISDB', N'ServerRequiresEncryption', REG_DWORD, 1;
+              
+              DECLARE @catalog_password NVARCHAR(128) = N'P@ssword12345!'; 
+              EXEC [catalog].[create_catalog] @password = @catalog_password;
+              PRINT 'SSISDB Catalog built successfully.';
+          END
+          ELSE
+          BEGIN
+              PRINT 'SSISDB Catalog already provisioned on destination.';
+          END
+
+          -- Provision deployment folder inside SSIS database environment
+          IF NOT EXISTS (SELECT * FROM [SSISDB].[catalog].[folders] WHERE name = 'TimesheetDeployments')
+          BEGIN
+              PRINT 'Creating SSIS catalog management folder: TimesheetDeployments...';
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N'TimesheetDeployments';
+              PRINT 'Catalog directory structure added.';
+          END
+          ELSE
+          BEGIN
+              PRINT 'SSIS Folder structures for TimesheetDeployments already validated.';
+          END
+          "@
+
+          Write-Host "Connecting over tunnel to target instance ($server) to inspect SSIS catalog status..."
+          sqlcmd -b -S $server -U $user -P $pass -d "master" -Q $setupSql
  
       - name: Run Pre-Flight Database Scripts
         shell: powershell
@@ -43,7 +92,6 @@ jobs:
           $pass   = "${{ secrets.sql_password }}"
           $db     = "${{ inputs.database }}"
           
-          # Exact sequential list of pre-flight SQL files
           $sqlFiles = @(
             "CreateDatabase.sql",
             "CreateTables.sql",
@@ -57,7 +105,6 @@ jobs:
             $filePath = "SSIS-Project\Scripts\$file"
             if (Test-Path $filePath) {
               Write-Host "Executing: $file"
-              # -b forces sqlcmd to exit and fail the step if a SQL script raises an error
               sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
             } else {
               throw "Critical pre-flight file missing from workspace: $filePath"
@@ -65,26 +112,84 @@ jobs:
           }
           Write-Host "Pre-flight checks passed successfully."
 
-      - name: Trigger Remote SSIS Package Job
+      - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
         run: |
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
- 
-          Write-Host "Triggering Remote SSIS Automation via Agent..."
-          sqlcmd -b `
-            -S $server `
-            -U $user `
-            -P $pass `
-            -d "msdb" `
-            -Q "EXEC dbo.sp_start_job @job_name = 'Run_Timesheet_Package';"
+
+          # Automatically find your compiled .ispac file inside your project workspace folder
+          $ispacFile = Get-ChildItem -Path "SSIS-Project" -Filter "*.ispac" -Recurse | Select-Object -First 1
+          
+          if ($null -eq $ispacFile) {
+              throw "Could not locate a compiled .ispac file anywhere inside SSIS-Project workspace! Ensure your project is compiled/built before deployment."
+          }
+
+          $ispacPath = $ispacFile.FullName
+          $destinationProject = "/SSISDB/TimesheetDeployments/TimesheetPackage"
+
+          Write-Host "Found ISPAC Bundle target: $ispacPath"
+          Write-Host "Deploying bundle to remote SSISDB instances dynamically..."
+
+          # Silently invoke the standard integration services package wizard deployment application
+          & "C:\Program Files\Microsoft SQL Server\160\DTS\Binn\ISDeploymentWizard.exe" `
+              /S `
+              /SourceType:Project `
+              /SourcePath:"$ispacPath" `
+              /DestinationType:SSIS `
+              /DestinationServer:"$server" `
+              /DestinationPath:"$destinationProject" `
+              /AuthType:SQL `
+              /UserName:"$user" `
+              /Password:"$pass"
+              
+          Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
+
+      - name: 3. Provision and Trigger SQL Agent Job Dynamically
+        shell: powershell
+        run: |
+          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $user   = "${{ secrets.sql_username }}"
+          $pass   = "${{ secrets.sql_password }}"
+          $db     = "${{ inputs.database }}"
+
+          $provisionJobSql = @"
+          USE [msdb];
+          SET NOCOUNT ON;
+          
+          -- Drop existing job cleanly to reset configuration variables dynamically
+          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
+          BEGIN
+              PRINT 'Stale job configuration found. Dropping old configuration properties...';
+              EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule=1;
+          END
+
+          PRINT 'Creating fresh automated runtime execution wrapper under MSDB...';
+          DECLARE @jobId BINARY(16);
+          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
+
+          -- Add step configured to map inside our custom SSISDB folder hierarchy
+          EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
+              @subsystem = N'SSIS',
+              @command = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetPackage\Package.dtsx\"" /SERVER "\"$server\"" /ENVREFERENCE 0',
+              @retry_attempts = 0;
+
+          -- Assign job execution scope to target local engine instance
+          EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
+          
+          PRINT 'Executing SQL Agent Job step wrapper...';
+          EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
+          "@
+
+          Write-Host "Provisioning fresh target job template execution parameters..."
+          sqlcmd -b -S $server -U $user -P $pass -d "msdb" -Q $provisionJobSql
  
       - name: Deployment Successful
         if: success()
         shell: powershell
         run: |
           Write-Host "========================================"
-          Write-Host "PRE-FLIGHT AND SSIS EXECUTION SIGNAL COMPLETED"
+          Write-Host "PRE-FLIGHT, PACKAGE DEPLOY, AND SSIS AGENT SIGNALS COMPLETED"
           Write-Host "Environment : ${{ inputs.environment_name }}"
           Write-Host "========================================"
