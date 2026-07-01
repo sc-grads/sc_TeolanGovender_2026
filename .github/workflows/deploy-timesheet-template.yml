@@ -152,8 +152,8 @@ jobs:
           USE [msdb];
           SET NOCOUNT ON;
 
-          -- TARGET FIX: Explicitly mapped command properties to PracticeActivities and Package2.dtsx
-          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "." /ENVREFERENCE 0';
+          -- FIX: Removed /ENVREFERENCE 0 so it runs without looking for an environment map
+          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."';
 
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
