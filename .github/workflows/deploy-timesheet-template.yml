@@ -149,10 +149,19 @@ jobs:
           $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
           
           $provisionJobSql = @"
-          USE [msdb];
           SET NOCOUNT ON;
 
-          -- FIX: Removed /ENVREFERENCE 0 so it runs without looking for an environment map
+          -- 1. FIX THE PERMISSION GAP FIRST
+          -- Explicitly ensure the background Agent service has access to the newly built SSISDB
+          USE [SSISDB];
+          IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'NT Service\SQLAgent$MSSQLSERVERDEVEL')
+          BEGIN
+              CREATE USER [NT Service\SQLAgent$MSSQLSERVERDEVEL] FOR LOGIN [NT Service\SQLAgent$MSSQLSERVERDEVEL];
+          END
+          ALTER ROLE [ssis_admin] ADD MEMBER [NT Service\SQLAgent$MSSQLSERVERDEVEL];
+
+          -- 2. RESET JOB ENVIRONMENT
+          USE [msdb];
           DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."';
 
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
