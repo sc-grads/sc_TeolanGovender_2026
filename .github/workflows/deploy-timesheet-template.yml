@@ -122,8 +122,8 @@ jobs:
 
           $wizardPath = $wizardExe.FullName
           
-          # Deploys clean project bundle into folder "TimesheetDeployments"
-          $destinationProject = "/SSISDB/TimesheetDeployments/TimesheetIntegrationTestTwo"
+          # TARGET FIX: Changed folder path to target PracticeActivities explicitly
+          $destinationProject = "/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo"
           Write-Host "Deploying bundle to remote SSISDB instance..."
 
           & $wizardPath `
@@ -152,8 +152,8 @@ jobs:
           USE [msdb];
           SET NOCOUNT ON;
 
-          -- Clean hardcoded path matching your target project output structures
-          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "." /ENVREFERENCE 0';
+          -- TARGET FIX: Explicitly mapped command properties to PracticeActivities and Package2.dtsx
+          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "." /ENVREFERENCE 0';
 
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
