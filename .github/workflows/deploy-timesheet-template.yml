@@ -152,27 +152,64 @@ jobs:
           USE [msdb];
           SET NOCOUNT ON;
 
-          -- FIX: Removed /ENVREFERENCE 0 so it runs without looking for an environment map
+          -- Configurations
           DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."';
+          DECLARE @operatorName NVARCHAR(128) = N'Pipeline_Admin';
+          DECLARE @operatorEmail NVARCHAR(128) = N'your_email@domain.com'; -- ◄ CHOOSE YOUR EMAIL HERE
 
+          -- 1. Setup the Operator (The email recipient) if they don't exist
+          IF NOT EXISTS (SELECT name FROM msdb.dbo.sysoperators WHERE name = @operatorName)
+          BEGIN
+              PRINT 'Creating alert notification operator...';
+              EXEC msdb.dbo.sp_add_operator @name = @operatorName, 
+                  @enabled = 1, 
+                  @email_address = @operatorEmail;
+          END
+          ELSE
+          BEGIN
+              -- Update email address if it changed
+              EXEC msdb.dbo.sp_update_operator @name = @operatorName, @email_address = @operatorEmail;
+          END
+
+          -- 2. Clear old job instances safely
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
               PRINT 'Stale job configuration found. Dropping old configuration properties...';
               EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule=1;
           END
 
-          PRINT 'Creating fresh automated runtime execution wrapper...';
+          PRINT 'Creating fresh automated runtime execution wrapper with alerting...';
           DECLARE @jobId BINARY(16);
-          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
+          
+          -- Create job with automatic email failure action (notify_level_email = 2 means 'On Failure')
+          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', 
+              @enabled = 1, 
+              @notify_level_email = 2, 
+              @notify_email_operator_name = @operatorName,
+              @job_id = @jobId OUTPUT;
 
+          -- Add execution task
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
               @command = @ssisCommand,
               @retry_attempts = 0;
 
+          -- 3. Create the 30-Second recurring schedule
+          -- @freq_subday_type = 2 (Seconds), @freq_subday_interval = 30 (Every 30 seconds)
+          DECLARE @scheduleName NVARCHAR(128) = N'Timesheet_30Sec_Interval';
+          EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, 
+              @name = @scheduleName,
+              @enabled = 1,
+              @freq_type = 4,          -- Daily
+              @freq_interval = 1,      -- Every day
+              @freq_subday_type = 2,   -- Unit: Seconds
+              @freq_subday_interval = 30, -- Interval: 30
+              @active_start_time = 000000; -- Start at midnight 00:00:00
+
+          -- Bind job to the local engine
           EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
           
-          PRINT 'Executing SQL Agent Job step wrapper...';
+          PRINT 'Executing SQL Agent Job step initial run wrapper...';
           EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
           "@
 
