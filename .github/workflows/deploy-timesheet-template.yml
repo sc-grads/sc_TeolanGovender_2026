@@ -153,7 +153,7 @@ jobs:
           SET NOCOUNT ON;
 
           -- Clean hardcoded path matching your target project output structures
-          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetIntegrationTestTwo\Package.dtsx\"" /SERVER "." /ENVREFERENCE 0';
+          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "." /ENVREFERENCE 0';
 
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
