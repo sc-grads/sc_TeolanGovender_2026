@@ -150,14 +150,12 @@ jobs:
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
-          # 1. Write the clean T-SQL script directly to a file to prevent sqlcmd parsing bugs
           $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
           
           $provisionJobSql = @"
           USE [msdb];
           SET NOCOUNT ON;
           
-          -- Drop existing job cleanly to reset configuration variables dynamically
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
               PRINT 'Stale job configuration found. Dropping old configuration properties...';
@@ -168,25 +166,21 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
 
-          -- Add step configured to map inside our custom SSISDB folder hierarchy
+          -- FIX: Change /SERVER from the dynamic variable to "." so the Agent runs it locally inside its own memory space
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
-              @command = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetPackage\Package.dtsx\"" /SERVER "\"$server\"" /ENVREFERENCE 0',
+              @command = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetPackage\Package.dtsx\"" /SERVER "." /ENVREFERENCE 0',
               @retry_attempts = 0;
 
-          -- Assign job execution scope to target local engine instance
           EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
           
           PRINT 'Executing SQL Agent Job step wrapper...';
           EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
           "@
 
-          # Output T-SQL directly to workspace
           Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
 
           Write-Host "Provisioning fresh target job template execution parameters..."
-          
-          # 2. Feed the file input (-i) directly to sqlcmd safely
           sqlcmd -b -S $server -U $user -P $pass -d "msdb" -i $jobScriptPath
  
       - name: Deployment Successful
