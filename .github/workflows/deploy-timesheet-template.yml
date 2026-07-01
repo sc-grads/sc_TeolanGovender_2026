@@ -152,33 +152,32 @@ jobs:
 
           $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
           
-          # T-SQL that dynamically inspects SSISDB to build the correct path
+          # Simplified T-SQL lookup without using last_deployment_time
           $provisionJobSql = @"
           USE [msdb];
           SET NOCOUNT ON;
           
-          -- 1. Look up the deployed Project and Package names dynamically from the SSIS catalog
           DECLARE @projectName NVARCHAR(255);
           DECLARE @packageName NVARCHAR(255);
           DECLARE @ssisCommand NVARCHAR(4000);
 
+          -- Direct join to extract the first package name found under the folder
           SELECT TOP 1 
               @projectName = p.name,
               @packageName = pkg.name
           FROM [SSISDB].[catalog].[packages] pkg
           JOIN [SSISDB].[catalog].[projects] p ON pkg.project_id = p.project_id
           JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-          WHERE f.name = 'TimesheetDeployments'
-          ORDER BY p.last_deployment_time DESC;
+          WHERE f.name = 'TimesheetDeployments';
 
-          -- Fallback names if lookup yields nothing (safeguard)
+          -- Fallback names if lookup yields nothing
           IF @projectName IS NULL SET @projectName = 'TimesheetPackage';
           IF @packageName IS NULL SET @packageName = 'Package.dtsx';
 
-          -- Construct the strict local ISSERVER path string
+          -- Construct the local ISSERVER path string
           SET @ssisCommand = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\' + @projectName + '\' + @packageName + '\"" /SERVER "." /ENVREFERENCE 0';
 
-          -- 2. Drop existing job cleanly if it exists
+          -- Drop existing job cleanly if it exists
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
               PRINT 'Stale job configuration found. Dropping old configuration properties...';
@@ -189,7 +188,7 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
 
-          -- 3. Add job step with our dynamically discovered path command
+          -- Add job step with our dynamically discovered path command
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
               @command = @ssisCommand,
