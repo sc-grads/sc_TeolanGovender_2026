@@ -150,14 +150,52 @@ jobs:
           $provisionJobSql = @"
           SET NOCOUNT ON;
 
-          -- 1. Sync backend permissions for the background service worker
-          USE [SSISDB];
-          IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'NT Service\SQLAgent$MSSQLSERVERDEVEL')
-          BEGIN
-              CREATE USER [NT Service\SQLAgent$MSSQLSERVERDEVEL] FOR LOGIN [NT Service\SQLAgent$MSSQLSERVERDEVEL];
-          END
-          ALTER ROLE [ssis_admin] ADD MEMBER [NT Service\SQLAgent$MSSQLSERVERDEVEL];
+          -- 1. Dynamically find and sync backend permissions for the exact SQL Agent Service Account
+          USE [master];
+          DECLARE @agentServiceName NVARCHAR(500);
+          DECLARE @agentLoginName NVARCHAR(500);
 
+          -- Fetch the active service name from the local instance registry
+          EXEC master.dbo.xp_instance_regread 
+              N'HKEY_LOCAL_MACHINE', 
+              N'SYSTEM\CurrentControlSet\Services\SQLSERVERAGENT', 
+              N'ObjectName', 
+              @agentServiceName OUTPUT;
+
+          -- If it's a standard virtual service account, format it cleanly for SQL Server
+          IF @agentServiceName LIKE 'NT SERVICE%'
+          BEGIN
+              SET @agentLoginName = @agentServiceName;
+          END
+          ELSE
+          BEGIN
+              -- Fallback to system tracking if registry is masked
+              SET @agentLoginName = N'NT SERVICE\SQLSERVERAGENT';
+          END
+
+          -- Switch to SSISDB and map the detected account safely
+          USE [SSISDB];
+          IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = @agentLoginName) AND @agentLoginName IS NOT NULL
+          BEGIN
+              PRINT 'Registering server login for: ' + @agentLoginName;
+              DECLARE @sqlLogin NVARCHAR(max) = 'CREATE LOGIN [' + @agentLoginName + '] FROM WINDOWS;';
+              EXEC(@sqlLogin);
+          END
+
+          IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = @agentLoginName) AND @agentLoginName IS NOT NULL
+          BEGIN
+              PRINT 'Mapping database user for: ' + @agentLoginName;
+              DECLARE @sqlUser NVARCHAR(max) = 'CREATE USER [' + @agentLoginName + '] FOR LOGIN [' + @agentLoginName + '];';
+              EXEC(@sqlUser);
+          END
+
+          IF @agentLoginName IS NOT NULL
+          BEGIN
+              EXEC sp_addrolemember @rolename = 'ssis_admin', @membername = @agentLoginName;
+              PRINT 'Permissions aligned cleanly for ' + @agentLoginName;
+          END
+
+          -- 2. RESET JOB ENVIRONMENT
           USE [msdb];
           
           -- Configuration Targets
@@ -165,7 +203,7 @@ jobs:
           DECLARE @operatorName NVARCHAR(128) = N'Pipeline_Admin';
           DECLARE @operatorEmail NVARCHAR(128) = N'your_email@domain.com'; -- ◄ REPLACE WITH YOUR OUTLOOK EMAIL
 
-          -- 2. Setup the Alert Recipient Operator
+          -- Setup the Alert Recipient Operator
           IF NOT EXISTS (SELECT name FROM msdb.dbo.sysoperators WHERE name = @operatorName)
           BEGIN
               PRINT 'Registering notification operator...';
@@ -176,7 +214,7 @@ jobs:
               EXEC msdb.dbo.sp_update_operator @name = @operatorName, @email_address = @operatorEmail;
           END
 
-          -- 3. Safely wipe existing job iterations
+          -- Safely wipe existing job iterations
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
               PRINT 'Stale job configuration found. Sweeping properties...';
@@ -199,8 +237,7 @@ jobs:
               @command = @ssisCommand,
               @retry_attempts = 0;
 
-          -- 4. Create the 30-Second Schedule Matrix
-          -- freq_subday_type = 2 (Seconds), freq_subday_interval = 30 (Every 30 seconds)
+          -- Create the 30-Second Schedule Matrix
           EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, 
               @name = N'Timesheet_30Sec_Interval',
               @enabled = 1,
