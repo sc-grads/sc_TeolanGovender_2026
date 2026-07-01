@@ -8,6 +8,7 @@ DatabaseAdministration/CourseFolders/
 *.sln.docstates
 
 bin/
+!**/bin/**/*.ispac
 obj/
 
 *.cache
