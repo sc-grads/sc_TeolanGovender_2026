@@ -122,7 +122,6 @@ jobs:
 
           $wizardPath = $wizardExe.FullName
           
-          # TARGET FIX: Changed folder path to target PracticeActivities explicitly
           $destinationProject = "/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo"
           Write-Host "Deploying bundle to remote SSISDB instance..."
 
@@ -139,7 +138,7 @@ jobs:
               
           Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
 
-      - name: 3. Provision and Trigger SQL Agent Job Dynamically
+      - name: 3. Provision Scheduled SQL Agent Job with Alerts
         shell: powershell
         run: |
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
@@ -151,8 +150,7 @@ jobs:
           $provisionJobSql = @"
           SET NOCOUNT ON;
 
-          -- 1. FIX THE PERMISSION GAP FIRST
-          -- Explicitly ensure the background Agent service has access to the newly built SSISDB
+          -- 1. Sync backend permissions for the background service worker
           USE [SSISDB];
           IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'NT Service\SQLAgent$MSSQLSERVERDEVEL')
           BEGIN
@@ -160,29 +158,61 @@ jobs:
           END
           ALTER ROLE [ssis_admin] ADD MEMBER [NT Service\SQLAgent$MSSQLSERVERDEVEL];
 
-          -- 2. RESET JOB ENVIRONMENT
           USE [msdb];
+          
+          -- Configuration Targets
           DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."';
+          DECLARE @operatorName NVARCHAR(128) = N'Pipeline_Admin';
+          DECLARE @operatorEmail NVARCHAR(128) = N'your_email@domain.com'; -- ◄ REPLACE WITH YOUR OUTLOOK EMAIL
 
+          -- 2. Setup the Alert Recipient Operator
+          IF NOT EXISTS (SELECT name FROM msdb.dbo.sysoperators WHERE name = @operatorName)
+          BEGIN
+              PRINT 'Registering notification operator...';
+              EXEC msdb.dbo.sp_add_operator @name = @operatorName, @enabled = 1, @email_address = @operatorEmail;
+          END
+          ELSE
+          BEGIN
+              EXEC msdb.dbo.sp_update_operator @name = @operatorName, @email_address = @operatorEmail;
+          END
+
+          -- 3. Safely wipe existing job iterations
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
-              PRINT 'Stale job configuration found. Dropping old configuration properties...';
-              EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule=1;
+              PRINT 'Stale job configuration found. Sweeping properties...';
+              EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule = 1;
           END
 
           PRINT 'Creating fresh automated runtime execution wrapper...';
           DECLARE @jobId BINARY(16);
-          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
+          
+          -- Create Job with Email on Failure enabled (notify_level_email = 2)
+          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', 
+              @enabled = 1, 
+              @notify_level_email = 2,
+              @notify_email_operator_name = @operatorName,
+              @job_id = @jobId OUTPUT;
 
+          -- Add package step
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
               @command = @ssisCommand,
               @retry_attempts = 0;
 
+          -- 4. Create the 30-Second Schedule Matrix
+          -- freq_subday_type = 2 (Seconds), freq_subday_interval = 30 (Every 30 seconds)
+          EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, 
+              @name = N'Timesheet_30Sec_Interval',
+              @enabled = 1,
+              @freq_type = 4,              -- Daily
+              @freq_interval = 1,          -- Every 1 day
+              @freq_subday_type = 2,       -- Unit: Seconds
+              @freq_subday_interval = 30,  -- 30 Seconds
+              @active_start_time = 000000; -- Active starting at midnight
+
+          -- Assign job to the local engine server
           EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
-          
-          PRINT 'Executing SQL Agent Job step wrapper...';
-          EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
+          PRINT 'Job provisioned and schedule active.';
           "@
 
           Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
@@ -195,6 +225,6 @@ jobs:
         shell: powershell
         run: |
           Write-Host "========================================"
-          Write-Host "PRE-FLIGHT, PACKAGE DEPLOY, AND SSIS AGENT SIGNALS COMPLETED"
+          Write-Host "PRE-FLIGHT, PACKAGE DEPLOY, AND SCHEDULE ENGINE COMPLETE"
           Write-Host "Environment : ${{ inputs.environment_name }}"
           Write-Host "========================================"
