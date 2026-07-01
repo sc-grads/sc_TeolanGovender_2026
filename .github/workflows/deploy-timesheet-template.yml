@@ -42,7 +42,6 @@ jobs:
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
-          # T-SQL to enable CLR and create SSISDB if missing (Skipping folder creation to avoid SQL Auth block)
           $setupSql = @"
           SET NOCOUNT ON;
 
@@ -108,13 +107,11 @@ jobs:
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
-          # Target the .ispac file in your workspace
           $ispacPath = "$env:GITHUB_WORKSPACE\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
           if (-not (Test-Path $ispacPath)) {
               throw "Critical Error: Could not locate the .ispac file at expected path: $ispacPath."
           }
 
-          # Dynamically search the standard program directories for the Wizard executable
           Write-Host "Locating ISDeploymentWizard.exe on the runner image..."
           $searchPaths = @("C:\Program Files", "C:\Program Files (x86)")
           $wizardExe = Get-ChildItem -Path $searchPaths -Filter "ISDeploymentWizard.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -125,11 +122,10 @@ jobs:
 
           $wizardPath = $wizardExe.FullName
           
-          # We use "TimesheetDeployments" as our standard automated deployment folder
+          # Deploys clean project bundle into folder "TimesheetDeployments"
           $destinationProject = "/SSISDB/TimesheetDeployments/TimesheetIntegrationTestTwo"
           Write-Host "Deploying bundle to remote SSISDB instance..."
 
-          # Fire the wizard deployment tool
           & $wizardPath `
               /S `
               /SourceType:Project `
@@ -152,15 +148,13 @@ jobs:
 
           $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
           
-          # T-SQL that explicitly maps to our automated directory structural paths
           $provisionJobSql = @"
           USE [msdb];
           SET NOCOUNT ON;
 
-          -- Explicitly hardcoding the command to use our clean automated folder deployment configuration
+          -- Clean hardcoded path matching your target project output structures
           DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\TimesheetIntegrationTestTwo\Package.dtsx\"" /SERVER "." /ENVREFERENCE 0';
 
-          -- Drop existing job cleanly if it exists
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
           BEGIN
               PRINT 'Stale job configuration found. Dropping old configuration properties...';
@@ -171,69 +165,6 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
 
-          -- Add job step with our clear path parameters 
-          EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
-              @subsystem = N'SSIS',
-              @command = @ssisCommand,
-              @retry_attempts = 0;
-
-          EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
-          
-          PRINT 'Executing SQL Agent Job step wrapper...';
-          EXEC msdb.dbo.sp_start_job @job_name = N'Run_Timesheet_Package';
-          "@
-
-          Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
-
-          Write-Host "Provisioning fresh target job template execution parameters..."
-          sqlcmd -b -S $server -U $user -P $pass -d "msdb" -i $jobScriptPath
-
-      - name: 3. Provision and Trigger SQL Agent Job Dynamically
-        shell: powershell
-        run: |
-          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
-
-          $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
-          
-          # Simplified T-SQL lookup without using last_deployment_time
-          $provisionJobSql = @"
-          USE [msdb];
-          SET NOCOUNT ON;
-          
-          DECLARE @projectName NVARCHAR(255);
-          DECLARE @packageName NVARCHAR(255);
-          DECLARE @ssisCommand NVARCHAR(4000);
-
-          -- Direct join to extract the first package name found under the folder
-          SELECT TOP 1 
-              @projectName = p.name,
-              @packageName = pkg.name
-          FROM [SSISDB].[catalog].[packages] pkg
-          JOIN [SSISDB].[catalog].[projects] p ON pkg.project_id = p.project_id
-          JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-          WHERE f.name = 'TimesheetDeployments';
-
-          -- Fallback names if lookup yields nothing
-          IF @projectName IS NULL SET @projectName = 'TimesheetPackage';
-          IF @packageName IS NULL SET @packageName = 'Package.dtsx';
-
-          -- Construct the local ISSERVER path string
-          SET @ssisCommand = N'/ISSERVER "\"\SSISDB\TimesheetDeployments\' + @projectName + '\' + @packageName + '\"" /SERVER "." /ENVREFERENCE 0';
-
-          -- Drop existing job cleanly if it exists
-          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
-          BEGIN
-              PRINT 'Stale job configuration found. Dropping old configuration properties...';
-              EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule=1;
-          END
-
-          PRINT 'Creating fresh automated runtime execution wrapper matching package: ' + @packageName;
-          DECLARE @jobId BINARY(16);
-          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
-
-          -- Add job step with our dynamically discovered path command
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
               @command = @ssisCommand,
