@@ -1,0 +1,93 @@
+﻿<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="6/16/2026 5:17:11 PM"
+  DTS:CreationName="Microsoft.Package"
+  DTS:CreatorComputerName="LAPTOP-4KISL5TR"
+  DTS:CreatorName="LAPTOP-4KISL5TR\Teolan Govender"
+  DTS:DTSID="{5119C7D7-DF39-48A9-87DE-5098A5857C60}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:LastModifiedProductVersion="17.0.1016.0"
+  DTS:LocaleID="7177"
+  DTS:ObjectName="Package7"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{E34757BB-5D66-4768-B932-EC88F500A7D8}">
+  <DTS:Property
+    DTS:Name="PackageFormatVersion">8</DTS:Property>
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SomeCN]"
+      DTS:CreationName="ADO.NET:SQL"
+      DTS:DTSID="{4B257390-7CDB-4BE5-8954-7C3F3EBE8E40}"
+      DTS:ObjectName="SomeCN">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=LAPTOP-4KISL5TR\MSSQLSERVERDEVEL;Initial Catalog=;Integrated Security=True;Pooling=True;Min Pool Size=0;Max Pool Size=100;Connect Timeout=15;Encrypt=True;TrustServerCertificate=True;Packet Size=8000;Type System Version=Latest;Application Name=&quot;Framework Microsoft SqlClient Data Provider&quot;;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  <DTS:Variables />
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Rebuild Index Task"
+      DTS:CreationName="Microsoft.DbMaintenanceReindexTask"
+      DTS:Description="Rebuild Index Task"
+      DTS:DTSID="{F2A71E5F-2A60-411B-A348-96E0147CDEF1}"
+      DTS:ExecutableType="Microsoft.DbMaintenanceReindexTask"
+      DTS:LocaleID="-1"
+      DTS:ObjectName="Rebuild Index Task"
+      DTS:TaskContact="Rebuild Index Task; Microsoft Corporation; Microsoft SQL Server v9; © 2004 Microsoft Corporation; All Rights Reserved;http://www.microsoft.com/sql/support/default.asp;1"
+      DTS:ThreadHint="0">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          SQLTask:Connection="{4B257390-7CDB-4BE5-8954-7C3F3EBE8E40}"
+          SQLTask:DatabaseSelectionType="4"
+          SQLTask:TableSelectionType="2"
+          SQLTask:ObjectType="0"
+          SQLTask:ServerVersion="15"
+          SQLTask:ExtendedLogging="True"
+          SQLTask:LocalConnectionForLogging=""
+          SQLTask:TaskName=""
+          SQLTask:IgnoreDatabasesInNotOnlineState="False"
+          SQLTask:UseOriginalAmount="True"
+          SQLTask:Percentage="20"
+          SQLTask:Sort="False"
+          SQLTask:KeepOnline="False"
+          SQLTask:SkipUnsupported="False"
+          SQLTask:PadIndex="True"
+          SQLTask:MaximumDegreeOfParallelismUsed="False"
+          SQLTask:LowPriorityUsed="False"
+          SQLTask:CheckFragmentationPercentUsed="False"
+          SQLTask:CheckPageCountUsed="False"
+          SQLTask:CheckLastUsageInDaysUsed="False" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
+          <SQLTask:SelectedDatabases
+            SQLTask:DatabaseName="AdventureWorks2014" />
+          <SQLTask:SelectedTables
+            SQLTask:TableName="Production.Product" />
+        </SQLTask:SqlTaskData>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  <DTS:DesignTimeProperties><![CDATA[<?xml version="1.0"?>
+<!--This CDATA section contains the layout information of the package. The section includes information such as (x,y) coordinates, width, and height.-->
+<!--If you manually edit this section and make a mistake, you can delete it. -->
+<!--The package will still be able to load normally but the previous layout information will be lost and the designer will automatically re-arrange the elements on the design surface.-->
+<Objects
+  Version="8">
+  <!--Each node below will contain properties that do not affect runtime behavior.-->
+  <Package
+    design-time-name="Package">
+    <LayoutInfo>
+      <GraphLayout
+        Capacity="4" xmlns="clr-namespace:Microsoft.SqlServer.IntegrationServices.Designer.Model.Serialization;assembly=Microsoft.SqlServer.IntegrationServices.Graph">
+        <NodeLayout
+          Size="190,42"
+          Id="Package\Rebuild Index Task"
+          TopLeft="429.166649613116,141.266667789353" />
+      </GraphLayout>
+    </LayoutInfo>
+  </Package>
+</Objects>]]></DTS:DesignTimeProperties>
+</DTS:Executable>
