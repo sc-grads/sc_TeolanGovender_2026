@@ -114,8 +114,8 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production context detected. Initiating secure client-side data streaming..."
               
-              # 1. CONNECT TO YOUR SOURCE MASTER DATABASE AND PULL LOOKUPS
-              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=tunnel_link_user;Password=YourSecureTunnelPassword123!;"
+              # 1. CONNECT TO YOUR SOURCE MASTER DATABASE USING CHARMANEREMOTEUSER
+              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=charmaneremoteuser;Password=${{ secrets.MY_LOCAL_PASSWORD }};"
               $sourceConn = New-Object System.Data.SqlClient.SqlConnection($sourceConnString)
               $sourceConn.Open()
 
