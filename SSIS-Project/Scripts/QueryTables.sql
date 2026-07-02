@@ -8,7 +8,6 @@ SELECT * FROM AuditLog
 SELECT * FROM stg.Timesheet
 SELECT * FROM stg.Leave
 
-
 SELECT *
 FROM dbo.Timesheet t
 INNER JOIN dbo.Consultant c 
