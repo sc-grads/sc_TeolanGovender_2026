@@ -113,9 +113,14 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production context detected. Initiating secure client-side data streaming..."
               
-              # 1. CONNECT TO YOUR MACHINE: Uses the confirmed working secret variable
-              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=automation_user;Password=${{ secrets.sql_password }};"
-              $sourceConn = New-Object System.Data.SqlClient.SqlConnection($sourceConnString)
+              # 1. BUILD CONNECTION SECURELY TO BIND SPECIAL CHARACTERS
+              $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
+              $builder["Server"] = "0.tcp.sa.ngrok.io,23217"
+              $builder["Database"] = "TimesheetDb"
+              $builder["User Id"] = "automation_user"
+              $builder["Password"] = "${{ secrets.sql_password }}" # ◄ Bound safely without string interpolation
+              
+              $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
               $sourceConn.Open()
 
               # Fetch Consultants
@@ -130,7 +135,7 @@ jobs:
               $adapter.Fill($clientsTable) | Out-Null
               $sourceConn.Close()
 
-              # 2. CONNECT TO HER MACHINE: Uses her server variables ($server, $user, $pass)
+              # 2. CONNECT TO HER MACHINE: Uses her target parameters ($server, $user, $pass)
               $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
               $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
               $targetConn.Open()
