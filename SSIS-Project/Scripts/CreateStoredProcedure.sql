@@ -6,7 +6,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_TruncateStagingTables
 AS
 BEGIN
     SET NOCOUNT ON;
-    
     TRUNCATE TABLE stg.Timesheet;
     TRUNCATE TABLE stg.Leave;
 END;
@@ -20,17 +19,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_ProcessStagingToMaster
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    -- 0. AUTOMATIC ROLLING CLEANUP (Enforces a max threshold to prevent bloat)
-    IF (SELECT COUNT(*) FROM dbo.AuditLog) > 104
-    BEGIN
-        DELETE FROM dbo.AuditLog
-        WHERE LogID NOT IN (
-            SELECT TOP 104 LogID 
-            FROM dbo.AuditLog 
-            ORDER BY LogDateTime DESC, LogID DESC
-        );
-    END;
 
     -- 1. TRACK TIME, EXECUTION USER & RUN METADATA
     DECLARE @CurrentRunNumber INT;
@@ -46,9 +34,9 @@ BEGIN
     DECLARE @StartTimeTS DATETIME2 = SYSDATETIME(), @EndTimeTS DATETIME2;
     DECLARE @StartTimeLV DATETIME2 = SYSDATETIME(), @EndTimeLV DATETIME2;
 
-    -- Delta Metric Tracking Variables
-    DECLARE @TS_Inserts INT = 0, @TS_Updates INT = 0;
-    DECLARE @LV_Inserts INT = 0, @LV_Updates INT = 0;
+    -- Delta Metric Tracking Variables (Added Deletes)
+    DECLARE @TS_Inserts INT = 0, @TS_Updates INT = 0, @TS_Deletes INT = 0;
+    DECLARE @LV_Inserts INT = 0, @LV_Updates INT = 0, @LV_Deletes INT = 0;
 
     DECLARE @DefaultConsultantID INT, @DefaultClientID INT;
     SELECT TOP 1 @DefaultConsultantID = ConsultantID FROM dbo.Consultant;
@@ -93,10 +81,13 @@ BEGIN
     WHEN NOT MATCHED THEN
         INSERT (ConsultantID, [Date], [DayOfWeek], ClientID, [Description], BillableType, Comments, HoursWorked, StartTime, EndTime)
         VALUES (source.ConsultantID, source.[Date], source.DayOfWeek, source.ClientID, source.[Description], source.BillableType, source.Comments, source.TotalHours, source.StartTime, source.EndTime)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE
     OUTPUT $action INTO @TimesheetActions;
 
     SELECT @TS_Inserts = COUNT(*) FROM @TimesheetActions WHERE ActionTaken = 'INSERT';
     SELECT @TS_Updates = COUNT(*) FROM @TimesheetActions WHERE ActionTaken = 'UPDATE';
+    SELECT @TS_Deletes = COUNT(*) FROM @TimesheetActions WHERE ActionTaken = 'DELETE';
     SET @EndTimeTS = SYSDATETIME();
 
     -- 3. LEAVE MERGE
@@ -108,14 +99,11 @@ BEGIN
         SELECT 
             ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID,
             TRIM(s.LeaveType) AS LeaveType,
-            
-            -- Explicitly safe date parsing handles slashes (US style) and dash formats
             CASE 
                 WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
                 WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
                 ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
             END AS ParsedStartDate,
-
             CASE 
                 WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN 
                     CASE 
@@ -130,8 +118,6 @@ BEGIN
                         ELSE TRY_CAST(TRIM(s.EndDate) + '-' + @TargetYear AS DATE)
                     END
             END AS ParsedEndDate,
-
-            -- Handle 'half day' conversion directly before any groupings occur
             CASE 
                 WHEN LOWER(TRIM(s.NumberOfDays)) = 'half day' THEN 0.5
                 ELSE ISNULL(TRY_CAST(TRIM(s.NumberOfDays) AS DECIMAL(4,1)), 1.0)
@@ -143,43 +129,45 @@ BEGIN
     )
     MERGE dbo.Leave AS target
     USING (
-        -- Safely aggregate after data types have been fully structured
         SELECT 
-            ConsultantID, 
-            LeaveType, 
-            ParsedStartDate AS StartDate, 
-            MAX(ParsedEndDate) AS EndDate, 
-            MAX(ParsedDays) AS NumberOfDays
+            ConsultantID, LeaveType, ParsedStartDate AS StartDate, MAX(ParsedEndDate) AS EndDate, MAX(ParsedDays) AS NumberOfDays
         FROM CleanedLeave
-        WHERE ParsedStartDate IS NOT NULL -- Drops rows that failed date conversion completely
+        WHERE ParsedStartDate IS NOT NULL 
         GROUP BY ConsultantID, LeaveType, ParsedStartDate
     ) AS source
     ON (target.ConsultantID = source.ConsultantID AND target.StartDate = source.StartDate AND target.LeaveType = source.LeaveType)
-    
     WHEN MATCHED AND (target.NumberOfDays != source.NumberOfDays OR target.EndDate != source.EndDate) THEN
         UPDATE SET target.EndDate = source.EndDate, target.NumberOfDays = source.NumberOfDays
-        
     WHEN NOT MATCHED THEN
         INSERT (ConsultantID, LeaveType, StartDate, EndDate, NumberOfDays)
         VALUES (source.ConsultantID, source.LeaveType, source.StartDate, source.EndDate, source.NumberOfDays)
+    WHEN NOT MATCHED BY SOURCE THEN
+        DELETE
     OUTPUT $action INTO @LeaveActions;
-
 
     SELECT @LV_Inserts = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'INSERT';
     SELECT @LV_Updates = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'UPDATE';
+    SELECT @LV_Deletes = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'DELETE';
     SET @EndTimeLV = SYSDATETIME();
 
-    -- 4. WRITE TARGET SEGMENTATION LOGS (Now fully logged but safely capped)
-    INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
-    VALUES (
-        @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
-        @TS_Inserts, @TS_Updates, 0, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
-    );
+    -- 4. CONDITIONAL LOGGING: Now fires if inserts, updates, OR deletes happen.
+    IF (@TS_Inserts + @TS_Updates + @TS_Deletes > 0)
+    BEGIN
+        INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
+        VALUES (
+            @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
+            @TS_Inserts, @TS_Updates, @TS_Deletes, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
+        );
+    END;
 
-    INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
-    VALUES (
-        @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
-        @LV_Inserts, @LV_Updates, 0, @ExecutionUser, 'dbo.Leave', DATEDIFF(MILLISECOND, @StartTimeLV, @EndTimeLV)
-    );
+    IF (@LV_Inserts + @LV_Updates + @LV_Deletes > 0)
+    BEGIN
+        INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
+        VALUES (
+            @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
+            @LV_Inserts, @LV_Updates, @LV_Deletes, @ExecutionUser, 'dbo.Leave', DATEDIFF(MILLISECOND, @StartTimeLV, @EndTimeLV)
+        );
+    END;
+
 END;
 GO
