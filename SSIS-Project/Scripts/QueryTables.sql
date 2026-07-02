@@ -1,4 +1,5 @@
-USE TimesheetDb
+USE TimesheetDb_tg
+
 SELECT * FROM dbo.Timesheet
 SELECT * FROM Consultant
 SELECT * FROM Leave

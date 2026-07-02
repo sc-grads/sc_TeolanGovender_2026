@@ -1,8 +1,8 @@
 USE master;
 GO
 
-IF DB_ID('TimesheetDb') IS NULL
+IF DB_ID('TimesheetDb_tg') IS NULL
 BEGIN
-    CREATE DATABASE TimesheetDb;
+    CREATE DATABASE TimesheetDb_tg;
 END
 GO

@@ -1,6 +1,5 @@
-USE TimesheetDb;
+USE TimesheetDb_tg;
 GO
-
 
 -- 1. INDEXES FOR TABLE: dbo.Consultant
 -- Accelerate the Consultant lookup joins on name matching

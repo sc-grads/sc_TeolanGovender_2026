@@ -13,7 +13,7 @@ jobs:
     name: Deploy to Staging
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
-      database: TimesheetDb
+      database: TimesheetDb_tg
       environment_name: staging
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
@@ -41,7 +41,7 @@ jobs:
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"TimesheetDb\"},
+                  {\"name\":\"Database\",\"value\":\"TimesheetDb_tg\"},
                   {\"name\":\"Environment\",\"value\":\"Staging\"},
                   {\"name\":\"Status\",\"value\":\"PRE-FLIGHT & SSIS EXECUTION SENT\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
@@ -62,7 +62,7 @@ jobs:
     needs: deploy-staging
     uses: ./.github/workflows/deploy-timesheet-template.yml 
     with: 
-      database: TimesheetDb
+      database: TimesheetDb_tg
       environment_name: production
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
@@ -90,7 +90,7 @@ jobs:
               {
                 \"facts\":[
                   {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"TimesheetDb\"},
+                  {\"name\":\"Database\",\"value\":\"TimesheetDb_tg\"},
                   {\"name\":\"Environment\",\"value\":\"Production\"},
                   {\"name\":\"Status\",\"value\":\"SUCCESS\"},
                   {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}

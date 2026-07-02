@@ -1,4 +1,4 @@
-USE TimesheetDb;
+USE TimesheetDb_tg;
 GO
 
 
@@ -26,9 +26,6 @@ GO
 
 
 --Production Timesheet Table
-USE TimesheetDb;
-GO
-
 IF OBJECT_ID('dbo.Timesheet', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Timesheet (

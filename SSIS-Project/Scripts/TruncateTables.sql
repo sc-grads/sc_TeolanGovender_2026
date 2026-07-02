@@ -1,4 +1,5 @@
-USE TimesheetDb;
+USE TimesheetDb_tg;
+
 DELETE FROM dbo.Timesheet;
 DELETE FROM dbo.Leave;
 DELETE FROM dbo.Consultant;
