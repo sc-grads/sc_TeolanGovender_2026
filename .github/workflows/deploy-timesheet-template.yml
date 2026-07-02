@@ -114,8 +114,8 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production context detected. Initiating secure client-side data streaming..."
               
-              # 1. CONNECT TO YOUR SOURCE MASTER DATABASE USING CHARMANEREMOTEUSER
-              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=charmaneremoteuser;Password=${{ secrets.MY_LOCAL_PASSWORD }};"
+              # 1. CONNECT TO YOUR MACHINE: Use automation_user + YOUR password secret
+              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=automation_user;Password=${{ secrets.MY_LOCAL_PASSWORD }};"
               $sourceConn = New-Object System.Data.SqlClient.SqlConnection($sourceConnString)
               $sourceConn.Open()
 
@@ -131,7 +131,8 @@ jobs:
               $adapter.Fill($clientsTable) | Out-Null
               $sourceConn.Close()
 
-              # 2. CONNECT TO HER TARGET DATABASE AND STREAM INSERTS
+              # 2. CONNECT TO HER MACHINE: Uses her server variables ($server, $user, $pass)
+              # This will automatically use charmaneremoteuser on her side
               $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
               $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
               $targetConn.Open()
