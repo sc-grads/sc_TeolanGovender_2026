@@ -116,7 +116,7 @@ jobs:
               # 1. BUILD CONNECTION SECURELY TO BIND SPECIAL CHARACTERS
               $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
               $builder["Server"] = "0.tcp.sa.ngrok.io,23217"
-              $builder["Database"] = "TimesheetDb"
+              $builder["Database"] = "TimesheetDb_tg"
               $builder["User Id"] = "automation_user"
               $builder["Password"] = "${{ secrets.sql_password }}" # ◄ Bound safely without string interpolation
               
