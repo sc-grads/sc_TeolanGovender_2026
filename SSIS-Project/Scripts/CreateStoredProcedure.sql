@@ -16,16 +16,25 @@ GO
 CREATE OR ALTER PROCEDURE dbo.usp_ProcessStagingToMaster
     @CurrentFilePath VARCHAR(500) = 'Manual Execution / Unknown',
     @SSISTaskName VARCHAR(200) = 'Stored Procedure Execution',
-    @PackageRunNumber INT = NULL -- Optional override variable passed from SSIS
+    @PackageRunNumber INT = NULL 
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- 0. AUTOMATIC ROLLING CLEANUP (Enforces a max threshold to prevent bloat)
+    IF (SELECT COUNT(*) FROM dbo.AuditLog) > 1000
+    BEGIN
+        DELETE FROM dbo.AuditLog
+        WHERE LogID NOT IN (
+            SELECT TOP 104 LogID 
+            FROM dbo.AuditLog 
+            ORDER BY LogDateTime DESC, LogID DESC
+        );
+    END;
 
     -- 1. TRACK TIME, EXECUTION USER & RUN METADATA
     DECLARE @CurrentRunNumber INT;
     
-    -- If SSIS provides a run number, sync on it; otherwise, calculate next sequence number
     IF @PackageRunNumber IS NOT NULL
         SET @CurrentRunNumber = @PackageRunNumber;
     ELSE
@@ -93,18 +102,19 @@ BEGIN
     -- 3. LEAVE MERGE
     SET @StartTimeLV = SYSDATETIME();
     DECLARE @LeaveActions TABLE (ActionTaken VARCHAR(20));
+    DECLARE @TargetYear VARCHAR(4) = '2026';
 
     MERGE dbo.Leave AS target
     USING (
         SELECT 
             ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID, s.LeaveType,
-            TRY_CAST(s.StartDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE) AS StartDate,
-            ISNULL(MAX(CASE WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN TRY_CAST(s.StartDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE) ELSE TRY_CAST(s.EndDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE) END), TRY_CAST(s.StartDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE)) AS EndDate,
+            TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) AS StartDate,
+            ISNULL(MAX(CASE WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) ELSE TRY_CAST(s.EndDate + '-' + @TargetYear AS DATE) END), TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE)) AS EndDate,
             ISNULL(MAX(TRY_CAST(s.NumberOfDays AS INT)), 1) AS NumberOfDays
         FROM stg.Leave s
         LEFT JOIN dbo.Consultant c ON (TRIM(s.ConsultantFirstName) = TRIM(c.FirstName) AND TRIM(s.ConsultantLastName) = TRIM(c.LastName)) OR (c.FirstName + ' ' + c.LastName = TRIM(s.ConsultantFirstName))
-        WHERE s.StartDate IS NOT NULL AND s.LeaveType IS NOT NULL AND TRY_CAST(s.StartDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE) IS NOT NULL
-        GROUP BY c.ConsultantID, s.LeaveType, TRY_CAST(s.StartDate + '-' + CAST(YEAR(GETDATE()) AS VARCHAR(4)) AS DATE)
+        WHERE s.StartDate IS NOT NULL AND s.LeaveType IS NOT NULL AND TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) IS NOT NULL
+        GROUP BY c.ConsultantID, s.LeaveType, TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE)
     ) AS source
     ON (target.ConsultantID = source.ConsultantID AND target.StartDate = source.StartDate AND target.LeaveType = source.LeaveType)
     WHEN MATCHED AND source.EndDate IS NOT NULL AND (target.NumberOfDays != source.NumberOfDays OR target.EndDate != source.EndDate) THEN
@@ -118,16 +128,13 @@ BEGIN
     SELECT @LV_Updates = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'UPDATE';
     SET @EndTimeLV = SYSDATETIME();
 
-
-    -- 4. WRITE RESTRUCTURED LOGS WITH TARGET SEGMENTATION
-    -- Log Entry for Timesheets
+    -- 4. WRITE TARGET SEGMENTATION LOGS (Now fully logged but safely capped)
     INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
     VALUES (
         @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
         @TS_Inserts, @TS_Updates, 0, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
     );
 
-    -- Log Entry for Leaves
     INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
     VALUES (
         @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
