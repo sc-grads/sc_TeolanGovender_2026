@@ -53,7 +53,7 @@ END
 GO
 
 
---Production Leave Table
+-- Production Leave Table
 IF OBJECT_ID('dbo.Leave', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Leave (
@@ -62,10 +62,11 @@ BEGIN
         LeaveType VARCHAR(100) NOT NULL,
         StartDate DATE NOT NULL,
         EndDate DATE NOT NULL,
-        NumberOfDays INT NOT NULL,
+        NumberOfDays DECIMAL(4,1) NOT NULL, -- Changed from INT to DECIMAL to support 0.5 entries
         CONSTRAINT UC_Leave_Key UNIQUE (ConsultantID, StartDate, LeaveType)
     );
 END
+GO
 
 
 -- Audit Log Table

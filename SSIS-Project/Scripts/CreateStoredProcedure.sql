@@ -104,32 +104,66 @@ BEGIN
     DECLARE @LeaveActions TABLE (ActionTaken VARCHAR(20));
     DECLARE @TargetYear VARCHAR(4) = '2026';
 
+    ;WITH CleanedLeave AS (
+        SELECT 
+            ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID,
+            TRIM(s.LeaveType) AS LeaveType,
+            
+            -- Explicitly safe date parsing handles slashes (US style) and dash formats
+            CASE 
+                WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
+                WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
+                ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
+            END AS ParsedStartDate,
+
+            CASE 
+                WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN 
+                    CASE 
+                        WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
+                        WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
+                        ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
+                    END
+                ELSE 
+                    CASE 
+                        WHEN s.EndDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.EndDate, 101)
+                        WHEN s.EndDate LIKE '%-%' AND (s.EndDate LIKE '%-2026%' OR s.EndDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.EndDate, 105)
+                        ELSE TRY_CAST(TRIM(s.EndDate) + '-' + @TargetYear AS DATE)
+                    END
+            END AS ParsedEndDate,
+
+            -- Handle 'half day' conversion directly before any groupings occur
+            CASE 
+                WHEN LOWER(TRIM(s.NumberOfDays)) = 'half day' THEN 0.5
+                ELSE ISNULL(TRY_CAST(TRIM(s.NumberOfDays) AS DECIMAL(4,1)), 1.0)
+            END AS ParsedDays
+        FROM stg.Leave s
+        LEFT JOIN dbo.Consultant c ON (TRIM(s.ConsultantFirstName) = TRIM(c.FirstName) AND TRIM(s.ConsultantLastName) = TRIM(c.LastName)) 
+                                   OR (c.FirstName + ' ' + c.LastName = TRIM(s.ConsultantFirstName))
+        WHERE s.StartDate IS NOT NULL AND s.LeaveType IS NOT NULL
+    )
     MERGE dbo.Leave AS target
     USING (
+        -- Safely aggregate after data types have been fully structured
         SELECT 
-            ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID, 
-            s.LeaveType,
-            TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) AS StartDate,
-            ISNULL(MAX(CASE WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) ELSE TRY_CAST(s.EndDate + '-' + @TargetYear AS DATE) END), TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE)) AS EndDate,
-            
-            -- Dynamic text to decimal parser
-            ISNULL(MAX(CASE 
-                WHEN LOWER(TRIM(s.NumberOfDays)) = 'half day' THEN 0.5
-                ELSE TRY_CAST(s.NumberOfDays AS DECIMAL(4,1)) 
-            END), 1.0) AS NumberOfDays
-
-        FROM stg.Leave s
-        LEFT JOIN dbo.Consultant c ON (TRIM(s.ConsultantFirstName) = TRIM(c.FirstName) AND TRIM(s.ConsultantLastName) = TRIM(c.LastName)) OR (c.FirstName + ' ' + c.LastName = TRIM(s.ConsultantFirstName))
-        WHERE s.StartDate IS NOT NULL AND s.LeaveType IS NOT NULL AND TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) IS NOT NULL
-        GROUP BY c.ConsultantID, s.LeaveType, TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE)
+            ConsultantID, 
+            LeaveType, 
+            ParsedStartDate AS StartDate, 
+            MAX(ParsedEndDate) AS EndDate, 
+            MAX(ParsedDays) AS NumberOfDays
+        FROM CleanedLeave
+        WHERE ParsedStartDate IS NOT NULL -- Drops rows that failed date conversion completely
+        GROUP BY ConsultantID, LeaveType, ParsedStartDate
     ) AS source
     ON (target.ConsultantID = source.ConsultantID AND target.StartDate = source.StartDate AND target.LeaveType = source.LeaveType)
-    WHEN MATCHED AND source.EndDate IS NOT NULL AND (target.NumberOfDays != source.NumberOfDays OR target.EndDate != source.EndDate) THEN
+    
+    WHEN MATCHED AND (target.NumberOfDays != source.NumberOfDays OR target.EndDate != source.EndDate) THEN
         UPDATE SET target.EndDate = source.EndDate, target.NumberOfDays = source.NumberOfDays
+        
     WHEN NOT MATCHED THEN
         INSERT (ConsultantID, LeaveType, StartDate, EndDate, NumberOfDays)
         VALUES (source.ConsultantID, source.LeaveType, source.StartDate, source.EndDate, source.NumberOfDays)
     OUTPUT $action INTO @LeaveActions;
+
 
     SELECT @LV_Inserts = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'INSERT';
     SELECT @LV_Updates = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'UPDATE';
