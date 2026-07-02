@@ -83,7 +83,6 @@ jobs:
           # Outbound connection tracking parameters back to your machine
           $myTunnel = "0.tcp.sa.ngrok.io,23217" 
           $myUser   = "automation_user"
-          $myPass   = "${{ secrets.MY_LOCAL_PASSWORD }}"
 
           # Standard deployment sequence
           $sqlFiles = @(
@@ -114,8 +113,8 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production context detected. Initiating secure client-side data streaming..."
               
-              # 1. CONNECT TO YOUR MACHINE: Use automation_user + YOUR password secret
-              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=automation_user;Password=${{ secrets.MY_LOCAL_PASSWORD }};"
+              # 1. CONNECT TO YOUR MACHINE: Uses the confirmed working secret variable
+              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=automation_user;Password=${{ secrets.sql_password }};"
               $sourceConn = New-Object System.Data.SqlClient.SqlConnection($sourceConnString)
               $sourceConn.Open()
 
@@ -132,7 +131,6 @@ jobs:
               $sourceConn.Close()
 
               # 2. CONNECT TO HER MACHINE: Uses her server variables ($server, $user, $pass)
-              # This will automatically use charmaneremoteuser on her side
               $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
               $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
               $targetConn.Open()
@@ -177,7 +175,7 @@ jobs:
           $wizardExe = Get-ChildItem -Path $searchPaths -Filter "ISDeploymentWizard.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 
           if ($null -eq $wizardExe) {
-              throw "Critical Error: ISDeploymentWizard.exe was not found anywhere on the Windows runner image."
+              throw "Critical Error: ...ISDeploymentWizard.exe was not found anywhere on the Windows runner image."
           }
 
           $wizardPath = $wizardExe.FullName
@@ -231,9 +229,6 @@ jobs:
               SET @agentLoginName = N'NT SERVICE\SQLSERVERAGENT';
           END
 
-          -- LEAST-PRIVILEGE FIX: Wrap service account creation inside a TRY...CATCH
-          -- If the deployment account doesn't have security authorization to map new logins, 
-          -- it will skip beautifully rather than failing the build execution.
           BEGIN TRY
               USE [SSISDB];
               IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = @agentLoginName) AND @agentLoginName IS NOT NULL
