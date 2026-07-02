@@ -19,7 +19,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Timesheet_MergeIdentit
 BEGIN
     CREATE NONCLUSTERED INDEX IX_Timesheet_MergeIdentity 
     ON dbo.Timesheet (ConsultantID, [Date], StartTime)
-    INCLUDE ([Description], TotalHours, Comments, ClientID, BillableType, EndTime);
+    INCLUDE ([Description], HoursWorked, Comments, ClientID, BillableType, EndTime);
 END
 GO
 

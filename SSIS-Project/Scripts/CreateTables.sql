@@ -40,7 +40,7 @@ BEGIN
         [Description] VARCHAR(255),
         BillableType VARCHAR(50),
         Comments VARCHAR(500),
-        TotalHours DECIMAL(5,2) NOT NULL,
+        HoursWorked DECIMAL(5,2) NOT NULL,
         StartTime TIME(0), -- Matches standard storage format precision
         EndTime TIME(0),   -- Matches standard storage format precision
         CONSTRAINT UC_Timesheet_Key UNIQUE (ConsultantID, [Date], [Description], StartTime)
@@ -52,11 +52,12 @@ BEGIN
 END
 GO
 
+
 --Production Leave Table
 IF OBJECT_ID('dbo.Leave', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Leave (
-        LeaveID INT IDENTITY(1,1) PRIMARY KEY,
+        LeaveEntryID INT IDENTITY(1,1) PRIMARY KEY,
         ConsultantID INT NOT NULL FOREIGN KEY REFERENCES dbo.Consultant(ConsultantID),
         LeaveType VARCHAR(100) NOT NULL,
         StartDate DATE NOT NULL,
@@ -65,7 +66,6 @@ BEGIN
         CONSTRAINT UC_Leave_Key UNIQUE (ConsultantID, StartDate, LeaveType)
     );
 END
-
 
 
 -- Audit Log Table

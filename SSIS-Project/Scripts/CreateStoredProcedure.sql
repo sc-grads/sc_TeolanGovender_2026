@@ -79,10 +79,10 @@ BEGIN
         GROUP BY c.ConsultantID, TRY_CAST(s.[Date] AS DATE), cl.ClientID, s.[Description], TRY_CAST(s.StartTime AS TIME(0))
     ) AS source
     ON (target.ConsultantID = source.ConsultantID AND target.[Date] = source.[Date] AND target.StartTime = source.StartTime AND target.[Description] = source.[Description])
-    WHEN MATCHED AND (target.TotalHours != source.TotalHours OR ISNULL(target.Comments, '') != ISNULL(source.Comments, '') OR target.ClientID != source.ClientID) THEN
-        UPDATE SET target.TotalHours = source.TotalHours, target.Comments = source.Comments, target.ClientID = source.ClientID, target.BillableType = source.BillableType, target.EndTime = source.EndTime
+    WHEN MATCHED AND (target.HoursWorked != source.TotalHours OR ISNULL(target.Comments, '') != ISNULL(source.Comments, '') OR target.ClientID != source.ClientID) THEN
+        UPDATE SET target.HoursWorked = source.TotalHours, target.Comments = source.Comments, target.ClientID = source.ClientID, target.BillableType = source.BillableType, target.EndTime = source.EndTime
     WHEN NOT MATCHED THEN
-        INSERT (ConsultantID, [Date], [DayOfWeek], ClientID, [Description], BillableType, Comments, TotalHours, StartTime, EndTime)
+        INSERT (ConsultantID, [Date], [DayOfWeek], ClientID, [Description], BillableType, Comments, HoursWorked, StartTime, EndTime)
         VALUES (source.ConsultantID, source.[Date], source.DayOfWeek, source.ClientID, source.[Description], source.BillableType, source.Comments, source.TotalHours, source.StartTime, source.EndTime)
     OUTPUT $action INTO @TimesheetActions;
 
