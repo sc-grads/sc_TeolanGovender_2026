@@ -80,12 +80,6 @@ jobs:
           $pass   = "${{ secrets.sql_password }}"
           $db     = "${{ inputs.database }}"
           
-          # Outbound connection tracking parameters back to your machine
-          $myTunnel = "0.tcp.sa.ngrok.io,23217" 
-          $myUser   = "automation_user"
-          $myPass   = "${{ secrets.MY_LOCAL_PASSWORD }}"
-
-          # Standard deployment sequence
           $sqlFiles = @(
             "CreateDatabase.sql",
             "CreateTables.sql",
@@ -100,30 +94,18 @@ jobs:
             if (Test-Path $filePath) {
               Write-Host "Executing: $file"
               
+              # DYNAMIC LANDING FIX: 
               if ($file -eq "CreateDatabase.sql") {
                 sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
               } else {
                 sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
               }
+              
             } else {
               throw "Critical pre-flight file missing from workspace: $filePath"
             }
           }
-
-          # DYNAMIC SEEDING: Append the data migration run only for her target systems
-          if ("${{ inputs.environment_name }}" -eq "production" -or "${{ inputs.environment_name }}" -eq "staging") {
-              $seedPath = "SSIS-Project\Scripts\SeedData.sql"
-              if (Test-Path $seedPath) {
-                  Write-Host "Remote environment deployment context detected. Initiating SeedData.sql loop..."
-                  
-                  # FIXED EXTRA QUOTING: Added escape quotes to stop the comma from breaking argument separation
-                  sqlcmd -b -S $server -U $user -P $pass -d $db -v LocalTunnelAddress="`"$myTunnel`"" LocalTunnelUser="`"$myUser`"" LocalTunnelPass="`"$myPass`"" -i $seedPath
-              } else {
-                  throw "Data initialization configuration missing: $seedPath"
-              }
-          }
-
-          Write-Host "Pre-flight checks and lookups passed successfully."
+          Write-Host "Pre-flight checks passed successfully."
 
       - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
@@ -164,7 +146,6 @@ jobs:
           Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
 
       - name: 3. Provision Scheduled SQL Agent Job with Alerts
-        if: inputs.environment_name != 'production' && inputs.environment_name != 'staging'
         shell: powershell
         run: |
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
