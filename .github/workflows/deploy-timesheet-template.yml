@@ -112,15 +112,49 @@ jobs:
 
           # DYNAMIC SEEDING: Run the cross-server data migration ONLY in Production
           if ("${{ inputs.environment_name }}" -eq "production") {
-              $seedPath = "SSIS-Project\Scripts\SeedData.sql"
-              if (Test-Path $seedPath) {
-                  Write-Host "Production deployment context detected. Initiating cross-server SeedData.sql sync..."
-                  sqlcmd -b -S $server -U $user -P $pass -d $db -v LocalTunnelAddress="`"$myTunnel`"" LocalTunnelUser="`"$myUser`"" LocalTunnelPass="`"$myPass`"" -i $seedPath
-              } else {
-                  throw "Data initialization configuration missing: $seedPath"
+              Write-Host "Production context detected. Initiating secure client-side data streaming..."
+              
+              # 1. CONNECT TO YOUR SOURCE MASTER DATABASE AND PULL LOOKUPS
+              $sourceConnString = "Server=0.tcp.sa.ngrok.io,23217;Database=TimesheetDb;User Id=tunnel_link_user;Password=YourSecureTunnelPassword123!;"
+              $sourceConn = New-Object System.Data.SqlClient.SqlConnection($sourceConnString)
+              $sourceConn.Open()
+
+              # Fetch Consultants
+              $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
+              $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
+              $consultantsTable = New-Object System.Data.DataTable
+              $adapter.Fill($consultantsTable) | Out-Null
+
+              # Fetch Clients
+              $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
+              $clientsTable = New-Object System.Data.DataTable
+              $adapter.Fill($clientsTable) | Out-Null
+              $sourceConn.Close()
+
+              # 2. CONNECT TO HER TARGET DATABASE AND STREAM INSERTS
+              $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
+              $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
+              $targetConn.Open()
+
+              # Bulk Write Consultants safely using Least-Privilege BulkCopy
+              if ($consultantsTable.Rows.Count -gt 0) {
+                  Write-Host "Streaming Consultant lookup matrices..."
+                  $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity)
+                  $bulkCopy.DestinationTableName = "dbo.Consultant"
+                  $bulkCopy.WriteToServer($consultantsTable)
               }
+
+              # Bulk Write Clients safely
+              if ($clientsTable.Rows.Count -gt 0) {
+                  Write-Host "Streaming Client lookup matrices..."
+                  $bulkCopy.DestinationTableName = "dbo.Client"
+                  $bulkCopy.WriteToServer($clientsTable)
+              }
+
+              $targetConn.Close()
+              Write-Host "Data sync complete! All lookup frameworks matched cleanly."
           } else {
-              Write-Host "Staging context detected. Skipping cross-server lookups and keeping the schema local."
+              Write-Host "Staging context detected. Skipping cross-server lookups."
           }
 
           Write-Host "Pre-flight checks and lookups passed successfully."
