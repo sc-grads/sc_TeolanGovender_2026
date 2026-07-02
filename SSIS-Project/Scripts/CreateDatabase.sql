@@ -1,3 +1,6 @@
+USE master;
+GO
+
 IF DB_ID('TimesheetDb') IS NULL
 BEGIN
     CREATE DATABASE TimesheetDb;

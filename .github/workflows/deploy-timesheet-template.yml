@@ -93,7 +93,16 @@ jobs:
             $filePath = "SSIS-Project\Scripts\$file"
             if (Test-Path $filePath) {
               Write-Host "Executing: $file"
-              sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
+              
+              # DYNAMIC LANDING FIX: 
+              # If we are dropping/creating the DB, land in 'master' first. 
+              # Otherwise, land inside the target payload DB directly.
+              if ($file -eq "CreateDatabase.sql") {
+                sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
+              } else {
+                sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
+              }
+              
             } else {
               throw "Critical pre-flight file missing from workspace: $filePath"
             }
