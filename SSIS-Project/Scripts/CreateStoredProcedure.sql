@@ -22,7 +22,7 @@ BEGIN
     SET NOCOUNT ON;
 
     -- 0. AUTOMATIC ROLLING CLEANUP (Enforces a max threshold to prevent bloat)
-    IF (SELECT COUNT(*) FROM dbo.AuditLog) > 1000
+    IF (SELECT COUNT(*) FROM dbo.AuditLog) > 104
     BEGIN
         DELETE FROM dbo.AuditLog
         WHERE LogID NOT IN (
@@ -107,10 +107,17 @@ BEGIN
     MERGE dbo.Leave AS target
     USING (
         SELECT 
-            ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID, s.LeaveType,
+            ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID, 
+            s.LeaveType,
             TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) AS StartDate,
             ISNULL(MAX(CASE WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) ELSE TRY_CAST(s.EndDate + '-' + @TargetYear AS DATE) END), TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE)) AS EndDate,
-            ISNULL(MAX(TRY_CAST(s.NumberOfDays AS INT)), 1) AS NumberOfDays
+            
+            -- Dynamic text to decimal parser
+            ISNULL(MAX(CASE 
+                WHEN LOWER(TRIM(s.NumberOfDays)) = 'half day' THEN 0.5
+                ELSE TRY_CAST(s.NumberOfDays AS DECIMAL(4,1)) 
+            END), 1.0) AS NumberOfDays
+
         FROM stg.Leave s
         LEFT JOIN dbo.Consultant c ON (TRIM(s.ConsultantFirstName) = TRIM(c.FirstName) AND TRIM(s.ConsultantLastName) = TRIM(c.LastName)) OR (c.FirstName + ' ' + c.LastName = TRIM(s.ConsultantFirstName))
         WHERE s.StartDate IS NOT NULL AND s.LeaveType IS NOT NULL AND TRY_CAST(s.StartDate + '-' + @TargetYear AS DATE) IS NOT NULL
