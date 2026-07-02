@@ -115,7 +115,9 @@ jobs:
               $seedPath = "SSIS-Project\Scripts\SeedData.sql"
               if (Test-Path $seedPath) {
                   Write-Host "Remote environment deployment context detected. Initiating SeedData.sql loop..."
-                  sqlcmd -b -S $server -U $user -P $pass -d $db -v LocalTunnelAddress="$myTunnel" LocalTunnelUser="$myUser" LocalTunnelPass="$myPass" -i $seedPath
+                  
+                  # FIXED EXTRA QUOTING: Added escape quotes to stop the comma from breaking argument separation
+                  sqlcmd -b -S $server -U $user -P $pass -d $db -v LocalTunnelAddress="`"$myTunnel`"" LocalTunnelUser="`"$myUser`"" LocalTunnelPass="`"$myPass`"" -i $seedPath
               } else {
                   throw "Data initialization configuration missing: $seedPath"
               }
