@@ -112,16 +112,19 @@ jobs:
   # =======================================================
   deploy-to-partner-pc:
     name: Deploy to Partner PC
-    runs-on: ["self-hosted", "runner-cm-pc"] # ◄ Runs on her local machine runner
-    needs: deploy-to-my-pc # Wait until your local setup deploys successfully first
+    runs-on: ["self-hosted", "runner-cm-pc"]
+    needs: deploy-to-my-pc
+    
+    # ◄ Ensure this defaults block is present right here!
+    defaults:
+      run:
+        shell: powershell -ExecutionPolicy Bypass -Command Clean-Context; $ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true; #
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. Runs your pre-flight SQL scripts directly on her machine's database instance
     - name: 1. Run Your Pre-Flight Database Scripts on Her PC
-      shell: powershell
       run: |
         $dbName = "TimesheetDb_tg"
         $sqlFiles = @("CreateDatabase.sql", "CreateTables.sql", "CreateIndexes.sql", "CreateStoredProcedure.sql")
