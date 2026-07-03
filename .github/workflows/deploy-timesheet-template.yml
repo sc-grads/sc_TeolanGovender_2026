@@ -178,16 +178,23 @@ jobs:
                   # Bulk Write Consultants safely using BulkCopy
                   if ($consultantsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup lines to Production..."
-                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity)
+                      # Fix: Open with connection parameter explicitly, then apply identity rules
+                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn)
                       $bulkCopy.DestinationTableName = "dbo.Consultant"
+                      
+                      # Safely preserve internal identity mappings across engines
+                      $bulkCopy.Options = [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity
                       $bulkCopy.WriteToServer($consultantsTable)
                   }
 
                   # Bulk Write Clients safely
                   if ($clientsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup lines to Production..."
-                      $bulkCopy.DestinationTableName = "dbo.Client"
-                      $bulkCopy.WriteToServer($clientsTable)
+                      $bulkCopyClient = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn)
+                      $bulkCopyClient.DestinationTableName = "dbo.Client"
+                      
+                      $bulkCopyClient.Options = [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity
+                      $bulkCopyClient.WriteToServer($clientsTable)
                   }
 
                   $targetConn.Close()
