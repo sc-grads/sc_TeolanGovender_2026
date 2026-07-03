@@ -223,46 +223,31 @@ jobs:
               throw "Critical Error: Could not locate the .ispac file at expected path: $ispacPath."
           }
 
-          Write-Host "Reading compiled .ispac project package stream..."
-          $bytes = [System.IO.File]::ReadAllBytes($ispacPath)
+          Write-Host "Locating ISDeploymentWizard.exe on the runner image..."
+          $searchPaths = @("C:\Program Files", "C:\Program Files (x86)")
+          $wizardExe = Get-ChildItem -Path $searchPaths -Filter "ISDeploymentWizard.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if ($null -eq $wizardExe) {
+              throw "Critical Error: ...ISDeploymentWizard.exe was not found anywhere on the Windows runner image."
+          }
+
+          $wizardPath = $wizardExe.FullName
           
-          # Convert the binary array into a giant hex string format that SQL Server interprets seamlessly
-          $hexString = "0x" + [System.BitConverter]::ToString($bytes).Replace("-", "")
+          $destinationProject = "/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo"
+          Write-Host "Deploying bundle to remote SSISDB instance..."
 
-          $folderName = "PracticeActivities"
-          $projectName = "TimesheetIntegrationTestTwo"
-
-          # Relational deployment script wrapper leveraging the engine procedure backend directly
-          $deploySql = @"
-          SET NOCOUNT ON;
-          USE [SSISDB];
-
-          -- 1. Verify and provision the Target Catalog folder node if missing
-          IF NOT EXISTS (SELECT 1 FROM [catalog].[folders] WHERE name = N'$folderName')
-          BEGIN
-              PRINT 'Creating missing SSIS catalog folder workspace...';
-              EXEC [catalog].[create_folder] @folder_name = N'$folderName';
-          END
-
-          -- 2. Stream the binary project hex payload straight into the database catalog engine
-          PRINT 'Executing T-SQL project bundle injection loop...';
-          DECLARE @project_binary VARBINARY(MAX) = $hexString;
-
-          EXEC [catalog].[deploy_project] 
-              @folder_name = N'$folderName', 
-              @project_name = N'$projectName', 
-              @project_stream = @project_binary;
-
-          PRINT 'SUCCESS: SSIS Package successfully cataloged via T-SQL Bridge Layer.';
-          "@
-
-          # Write out to local workspace storage temporary query asset file
-          $deployScriptPath = "$env:GITHUB_WORKSPACE\deploy_ispac_backdoor.sql"
-          Set-Content -Path $deployScriptPath -Value $deploySql -Force
-
-          Write-Host "Shipping and cataloging project binary bundle via T-SQL backend connector..."
-          sqlcmd -b -S $server -U $user -P $pass -d "SSISDB" -i $deployScriptPath
-
+          & $wizardPath `
+              /S `
+              /SourceType:Project `
+              /SourcePath:"$ispacPath" `
+              /DestinationType:SSIS `
+              /DestinationServer:"$server" `
+              /DestinationPath:"$destinationProject" `
+              /AuthType:SQL `
+              /UserName:"$user" `
+              /Password:"$pass"
+              
+          Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
 
       - name: 3. Provision Scheduled SQL Agent Job with Alerts
         if: inputs.environment_name == 'staging'
