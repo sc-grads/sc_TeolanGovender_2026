@@ -1,14 +1,17 @@
-name: Deploy Your SSIS Package
+name: Deploy My SSIS Package To Both PCs
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  deploy:
+  # =======================================================
+  # JOB 1: DEPLOY YOUR SSIS PACKAGE TO YOUR COMPUTER
+  # =======================================================
+  deploy-to-my-pc:
     name: Deploy to My PC
-    runs-on: ["self-hosted", "runner-tg-pc"] # ◄ Your local runner label
+    runs-on: ["self-hosted", "runner-tg-pc"] # ◄ Updated with your exact label name
 
     steps:
     - name: Checkout Repository
@@ -29,8 +32,6 @@ jobs:
             } else {
               sqlcmd -b -S . -E -d $dbName -i "$filePath"
             }
-          } else {
-            Throw "Missing SQL Script: $filePath"
           }
         }
 
@@ -81,6 +82,108 @@ jobs:
         $connection.Close()
 
     - name: 5. Configure SQL Agent Automated Scheduler
+      shell: powershell
+      run: |
+        $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
+        $connection.Open()
+        
+        $jobName = "Run_Timesheet_Package"
+        $folderName = "PracticeActivities"
+        $jobQuery = @(
+            "USE msdb;",
+            "IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$jobName') EXEC dbo.sp_delete_job @job_name = N'$jobName', @delete_unused_schedule = 1;",
+            "EXEC dbo.sp_add_job @job_name = N'$jobName', @enabled = 1, @owner_login_name = N'sa';",
+            "EXEC msdb.dbo.sp_add_jobstep @job_name = N'$jobName', @step_name = N'Run SSIS Package', @step_id = 1, @subsystem = N'SSIS', @command = N'/ISSERVER `"`"\SSISDB\$folderName\TimesheetIntegrationTestTwo\Package2.dtsx`"`" /SERVER `"`".`"`"', @database_name = N'master';",
+            "EXEC dbo.sp_add_jobschedule @job_name = N'$jobName', @name = N'${jobName}_Schedule', @enabled = 1, @freq_type = 4, @freq_interval = 1, @freq_subday_type = 2, @freq_subday_interval = 30;",
+            "EXEC dbo.sp_add_jobserver @job_name = N'$jobName', @server_name = N'(local)';"
+        ) -join "`n"
+        
+        $command = $connection.CreateCommand()
+        $command.CommandText = $jobQuery
+        $command.ExecuteNonQuery() | Out-Null
+        $connection.Close()
+
+  # =======================================================
+  # JOB 2: DEPLOY YOUR SSIS PACKAGE TO YOUR PARTNER'S COMPUTER
+  # =======================================================
+  deploy-to-partner-pc:
+    name: Deploy to Partner PC
+    runs-on: ["self-hosted", "runner-coworker-pc"] # ◄ Runs on her local machine runner
+    needs: deploy-to-my-pc # Wait until your local setup deploys successfully first
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # 1. Runs your pre-flight SQL scripts directly on her machine's database instance
+    - name: 1. Run Your Pre-Flight Database Scripts on Her PC
+      shell: powershell
+      run: |
+        $dbName = "TimesheetDb_tg"
+        $sqlFiles = @("CreateDatabase.sql", "CreateTables.sql", "CreateIndexes.sql", "CreateStoredProcedure.sql")
+        
+        Write-Host "Executing database pre-flight scripts via Windows Auth on Her Instance..."
+        foreach ($file in $sqlFiles) {
+          $filePath = "${{ github.workspace }}\SSIS-Project\Scripts\$file"
+          if (Test-Path $filePath) {
+            if ($file -eq "CreateDatabase.sql") {
+              sqlcmd -b -S . -E -d "master" -i "$filePath"
+            } else {
+              sqlcmd -b -S . -E -d $dbName -i "$filePath"
+            }
+          }
+        }
+
+    # 2. Compiles your package files right on her machine using her local Visual Studio instance
+    - name: 2. Locate Visual Studio DevEnv Tool on Her PC
+      shell: powershell
+      run: |
+        $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+        if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
+        $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
+        if (Test-Path $devenvCom) {
+            echo "DEVENV_PATH=$devenvCom" | Out-File -FilePath $env:GITHUB_ENV -Append
+        } else { Throw "Visual Studio compiler not found on partner machine. Please ensure VS with SSIS extensions is installed." }
+ 
+    - name: 3. Build Your SSIS Project to ISPAC on Her PC
+      shell: powershell
+      run: |
+        $dtprojPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj"
+        & "${{ env.DEVENV_PATH }}" "$dtprojPath" /Build "Development"
+       
+        $targetIspacPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
+        if (Test-Path $targetIspacPath) {
+            echo "ISPAC_PATH=$targetIspacPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+        } else { Throw "Compiled .ispac artifact not found." }
+ 
+    # 3. Deploys your package into her local SSISDB Catalog
+    - name: 4. Deploy Package to Her SSISDB Catalog
+      shell: powershell
+      run: |
+        $projectPath = "${{ env.ISPAC_PATH }}"
+        $projectName = [System.IO.Path]::GetFileNameWithoutExtension($projectPath)
+        $fileBytes = [System.IO.File]::ReadAllBytes($projectPath)
+        $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
+        
+        $connStr = "Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;"
+        $connection = New-Object System.Data.SqlClient.SqlConnection($connStr)
+        $connection.Open()
+        
+        $folderName = "PracticeActivities"
+        $sqlQuery = @(
+            "SET NOCOUNT ON;",
+            "IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = '$folderName') BEGIN EXEC [SSISDB].[catalog].[create_folder] @folder_name = '$folderName'; END",
+            "DECLARE @project_binary VARBINARY(MAX) = $hexString;",
+            "EXEC [SSISDB].[catalog].[deploy_project] @folder_name = '$folderName', @project_name = '$projectName', @project_stream = @project_binary;"
+        ) -join "`n"
+        
+        $command = $connection.CreateCommand()
+        $command.CommandText = $sqlQuery
+        $command.ExecuteNonQuery() | Out-Null
+        $connection.Close()
+
+    # 4. Creates your 30-second automated scheduling wrapper inside her local SQL Server Agent
+    - name: 5. Configure Her SQL Agent Automated Scheduler
       shell: powershell
       run: |
         $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
