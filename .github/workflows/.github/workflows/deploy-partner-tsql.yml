@@ -1,0 +1,52 @@
+name: Deploy Partner TimesheetDB
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-and-migrate:
+    name: Deploy and Migrate TimesheetDB
+    # Executes locally on her machine via her background runner service
+    runs-on: ["self-hosted", "runner-coworker-pc"] 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: 1. Deploy Database Tables
+        shell: powershell
+        run: |
+          # Finds deploy-timesheetdb.sql directly in her repo root and runs via Windows Auth
+          sqlcmd -b -S . -E -d master -i .\deploy-timesheetdb.sql
+
+      - name: 2. Run Migration Stored Procedure
+        shell: powershell
+        run: |
+          Write-Host "Executing timesheet migration engine locally..."
+          # Fires her stored procedure inside her target database
+          sqlcmd -b -S . -E -d "TimesheetDb_tg" -Q "SET NOCOUNT ON; EXEC dbo.spRunTimesheetMigration;"
+
+      - name: 3. Create Automated 30-Second Schedule Loop
+        shell: powershell
+        run: |
+          $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
+          $connection.Open()
+          
+          $jobName = "Run_Partner_Timesheet_Job"
+          $jobQuery = @(
+              "USE msdb;",
+              "IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$jobName') EXEC dbo.sp_delete_job @job_name = N'$jobName', @delete_unused_schedule = 1;",
+              "EXEC dbo.sp_add_job @job_name = N'$jobName', @enabled = 1, @owner_login_name = N'sa';",
+              # Creates a job step that wakes up to run her stored procedure automatically
+              "EXEC msdb.dbo.sp_add_jobstep @job_name = N'$jobName', @step_name = N'Execute Stored Proc Migration', @step_id = 1, @subsystem = N'TSQL', @command = N'EXEC dbo.spRunTimesheetMigration;', @database_name = N'TimesheetDb_tg';",
+              "EXEC dbo.sp_add_jobschedule @job_name = N'$jobName', @name = N'${jobName}_Interval', @enabled = 1, @freq_type = 4, @freq_interval = 1, @freq_subday_type = 2, @freq_subday_interval = 30;",
+              "EXEC dbo.sp_add_jobserver @job_name = N'$jobName', @server_name = N'(local)';"
+          ) -join "`n"
+          
+          $command = $connection.CreateCommand()
+          $command.CommandText = $jobQuery
+          $command.ExecuteNonQuery() | Out-Null
+          $connection.Close()
+          Write-Host "Successfully scheduled 30-second background worker loop."
