@@ -1,0 +1,160 @@
+name: Consolidated Timesheet Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # =======================================================
+  # JOB 1: DEPLOY TO YOUR LOCAL COMPUTER (SSIS + Scripts)
+  # =======================================================
+  deploy-my-pc:
+    name: Deploy to My PC (Self-Hosted SSIS)
+    runs-on: ["self-hosted", "runner-my-pc"]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: 1. Run Pre-Flight Database Scripts
+      shell: powershell
+      run: |
+        $dbName = "TimesheetDb_tg"
+        $sqlFiles = @(
+          "CreateDatabase.sql",
+          "CreateTables.sql",
+          "CreateIndexes.sql",
+          "CreateStoredProcedure.sql"
+        )
+        
+        Write-Host "Executing local database pre-flight scripts via Windows Auth..."
+        foreach ($file in $sqlFiles) {
+          $filePath = "${{ github.workspace }}\SSIS-Project\Scripts\$file"
+          if (Test-Path $filePath) {
+            if ($file -eq "CreateDatabase.sql") {
+              sqlcmd -b -S . -E -d "master" -i "$filePath"
+            } else {
+              sqlcmd -b -S . -E -d $dbName -i "$filePath"
+            }
+          } else {
+            Throw "Missing SQL Script: $filePath"
+          }
+        }
+
+    - name: 2. Locate Visual Studio DevEnv Tool
+      shell: powershell
+      run: |
+        $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+        if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
+        $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
+        if (Test-Path $devenvCom) {
+            echo "DEVENV_PATH=$devenvCom" | Out-File -FilePath $env:GITHUB_ENV -Append
+        } else { Throw "Visual Studio compiler not found." }
+ 
+    - name: 3. Build SSIS Project to ISPAC
+      shell: powershell
+      run: |
+        $dtprojPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj"
+        & "${{ env.DEVENV_PATH }}" "$dtprojPath" /Build "Development"
+       
+        $targetIspacPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
+        if (Test-Path $targetIspacPath) {
+            echo "ISPAC_PATH=$targetIspacPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+        } else { Throw "Compiled .ispac artifact not found." }
+ 
+    - name: 4. Deploy Package to SSISDB Catalog
+      shell: powershell
+      run: |
+        $projectPath = "${{ env.ISPAC_PATH }}"
+        $projectName = [System.IO.Path]::GetFileNameWithoutExtension($projectPath)
+        $fileBytes = [System.IO.File]::ReadAllBytes($projectPath)
+        $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
+        
+        $connStr = "Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;"
+        $connection = New-Object System.Data.SqlClient.SqlConnection($connStr)
+        $connection.Open()
+        
+        $folderName = "PracticeActivities"
+        $sqlQuery = @(
+            "SET NOCOUNT ON;",
+            "IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = '$folderName') BEGIN EXEC [SSISDB].[catalog].[create_folder] @folder_name = '$folderName'; END",
+            "DECLARE @project_binary VARBINARY(MAX) = $hexString;",
+            "EXEC [SSISDB].[catalog].[deploy_project] @folder_name = '$folderName', @project_name = '$projectName', @project_stream = @project_binary;"
+        ) -join "`n"
+        
+        $command = $connection.CreateCommand()
+        $command.CommandText = $sqlQuery
+        $command.ExecuteNonQuery() | Out-Null
+        $connection.Close()
+
+    - name: 5. Configure SQL Agent Automated Scheduler
+      shell: powershell
+      run: |
+        $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
+        $connection.Open()
+        
+        $jobName = "Run_Timesheet_Package"
+        $folderName = "PracticeActivities"
+        $jobQuery = @(
+            "USE msdb;",
+            "IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$jobName') EXEC dbo.sp_delete_job @job_name = N'$jobName', @delete_unused_schedule = 1;",
+            "EXEC dbo.sp_add_job @job_name = N'$jobName', @enabled = 1, @owner_login_name = N'sa';",
+            "EXEC msdb.dbo.sp_add_jobstep @job_name = N'$jobName', @step_name = N'Run SSIS Package', @step_id = 1, @subsystem = N'SSIS', @command = N'/ISSERVER `"`"\SSISDB\$folderName\TimesheetIntegrationTestTwo\Package2.dtsx`"`" /SERVER `"`".`"`"', @database_name = N'master';",
+            "EXEC dbo.sp_add_jobschedule @job_name = N'$jobName', @name = N'${jobName}_Schedule', @enabled = 1, @freq_type = 4, @freq_interval = 1, @freq_subday_type = 2, @freq_subday_interval = 30;",
+            "EXEC dbo.sp_add_jobserver @job_name = N'$jobName', @server_name = N'(local)';"
+        ) -join "`n"
+        
+        $command = $connection.CreateCommand()
+        $command.CommandText = $jobQuery
+        $command.ExecuteNonQuery() | Out-Null
+        $connection.Close()
+
+  # =======================================================
+  # JOB 2: DEPLOY TO PARTNER'S ENVIRONMENT (Cloud-hosted)
+  # =======================================================
+  deploy-partner-env:
+    name: Deploy to Partner Env (Cloud-Hosted SQL)
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installing SQLCMD
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+
+      - name: Add SQLCMD to PATH
+        run: echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
+
+      - name: Test Connection
+        run: |
+          sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -C -Q "SELECT @@SERVERNAME AS ServerName, @@VERSION AS Version"
+
+      - name: Deploy Database Table
+        run: |
+          sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -C -d master -i ./deploy-timesheetdb.sql
+
+      - name: Run spRunTimesheetMigration
+        id: run_migration
+        run: |
+          RESULT=$(sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d "${{ vars.SQL_DATABASE }}" -C -h -1 -W -Q "SET NOCOUNT ON; EXEC dbo.spRunTimesheetMigration;")
+          LAST_LINE=$(echo "$RESULT" | sed '/^$/d' | tail -n 1)
+          EXIT_CODE=$(echo "$LAST_LINE" | awk '{print $1}')
+          STATUS=$(echo "$LAST_LINE" | awk '{$1=""; print substr($0,2)}' | sed 's/^ //')
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "migration failed (ExitCode=$EXIT_CODE)"
+            exit 1
+          fi
+    
+      - name: Verification Check
+        if: success()
+        run: echo "Partner migration completed successfully."
