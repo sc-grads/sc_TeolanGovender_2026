@@ -137,10 +137,11 @@ jobs:
         run: |
           sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -C -Q "SELECT @@SERVERNAME AS ServerName, @@VERSION AS Version"
 
+      # Change "./deploy-timesheetdb.sql" to match its actual subfolder location
       - name: Deploy Database Table
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -C -d master -i ./deploy-timesheetdb.sql
-
+          sqlcmd -S "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -C -d master -i ./SSIS-Project/Scripts/deploy-timesheetdb.sql
+          
       - name: Run spRunTimesheetMigration
         id: run_migration
         run: |
