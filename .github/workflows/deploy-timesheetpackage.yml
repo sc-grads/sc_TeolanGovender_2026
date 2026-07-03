@@ -67,6 +67,8 @@ jobs:
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
+      local_username: ${{ secrets.LOCAL_SQL_USERNAME }}
+      local_password: ${{ secrets.LOCAL_SQL_PASSWORD }}
 
 # PRODUCTION NOTIFICATION
   production-notify:

@@ -14,6 +14,10 @@ on:
         required: true
       sql_password:
         required: true
+      local_username:
+        required: false
+      local_password:
+        required: false
  
 jobs:
   deploy:
@@ -83,11 +87,15 @@ jobs:
       - name: Run Pre-Flight Database Scripts
         shell: powershell
         run: |
-          # Target Production Environment metrics (passed by GitHub Environment context)
+          # Target Environment metrics (passed by GitHub Environment context)
           $targetServer = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
           $targetUser   = "${{ secrets.sql_username }}"
           $targetPass   = "${{ secrets.sql_password }}"
           $targetDb     = "${{ inputs.database }}"
+
+          # Local Staging credentials for Production cross-server bridge executions
+          $localUser    = "${{ secrets.local_username }}"
+          $localPass    = "${{ secrets.local_password }}"
 
           # Standard deployment sequence
           $sqlFiles = @(
@@ -140,8 +148,8 @@ jobs:
               $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
               $builder["Server"] = $sourceServerRaw
               $builder["Database"] = "TimesheetDb_tg"
-              $builder["User Id"] = "automation_user"
-              $builder["Password"] = $targetPass  # Swaps safely as long as password profiles align
+              $builder["User Id"] = if (![string]::IsNullOrWhiteSpace($localUser)) { $localUser } else { "automation_user" }
+              $builder["Password"] = $localPass
               $builder["Connect Timeout"] = 15
               
               try {
@@ -162,6 +170,7 @@ jobs:
                   $sourceConn.Close()
 
                   # CONNECT TO HER ENVIRONMENT DATABASE
+                  Write-Host "Connecting to production engine target instance..."
                   $targetConnString = "Server=$targetServer;Database=$targetDb;User Id=$targetUser;Password=$targetPass;"
                   $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
                   $targetConn.Open()
