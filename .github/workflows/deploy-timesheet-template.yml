@@ -75,17 +75,11 @@ jobs:
       - name: Run Pre-Flight Database Scripts
         shell: powershell
         run: |
-          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
-          $db     = "${{ inputs.database }}"
-          
-          # 1. READ TUNNEL INFO DYNAMICALLY (Avoid Hardcoding entirely)
-          # Assuming you store your source ngrok address/port in GitHub Vars
-          $sourceServer = "${{ vars.SOURCE_TUNNEL_SERVER }}" # e.g., 0.tcp.sa.ngrok.io
-          $sourcePort   = "${{ vars.SOURCE_TUNNEL_PORT }}"   # e.g., 21715
-          $sourceDb     = "TimesheetDb_tg"
-          $sourceUser   = "automation_user"
+          # Target Production Environment metrics (passed by GitHub Environment context)
+          $targetServer = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $targetUser   = "${{ secrets.sql_username }}"
+          $targetPass   = "${{ secrets.sql_password }}"
+          $targetDb     = "${{ inputs.database }}"
 
           # Standard deployment sequence
           $sqlFiles = @(
@@ -96,63 +90,77 @@ jobs:
           )
 
           Write-Host "Starting Pre-Flight Database Executions..."
-          
           foreach ($file in $sqlFiles) {
             $filePath = "SSIS-Project\Scripts\$file"
             if (Test-Path $filePath) {
-              Write-Host "Executing: $file"
+              Write-Host "Executing: $file on Target Database..."
               if ($file -eq "CreateDatabase.sql") {
-                sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
+                sqlcmd -b -S $targetServer -U $targetUser -P $targetPass -d "master" -i $filePath
               } else {
-                sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
+                sqlcmd -b -S $targetServer -U $targetUser -P $targetPass -d $targetDb -i $filePath
               }
             } else {
               throw "Critical pre-flight file missing from workspace: $filePath"
             }
           }
 
-          # DYNAMIC SEEDING: Run the cross-server data migration ONLY in Production
-          if ("${{ inputs.environment_name }}" -eq "production") {
-              Write-Host "Production context detected. Initiating secure client-side data streaming..."
+          # --- CASE 1: STAGING ENVIRONMENT PROCESSING ---
+          if ("${{ inputs.environment_name }}" -eq "staging") {
+              Write-Host "Staging context detected. Archiving connection parameters for Production phase..."
+              $metaDir = "$env:GITHUB_WORKSPACE\staging-metadata"
+              if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir | Out-Null }
               
-              if ([string]::IsNullOrWhiteSpace($sourceServer) -or [string]::IsNullOrWhiteSpace($sourcePort)) {
-                  throw "Source tunnel variables (SOURCE_TUNNEL_SERVER / SOURCE_TUNNEL_PORT) are missing or empty!"
-              }
+              # Save your staging tunnel parameters safely to file
+              $targetServer | Out-File -FilePath "$metaDir\source_connection.txt" -Force
+              Write-Host "Staging parameters archived successfully."
+          }
 
-              # BUILD CONNECTION SECURELY TO BIND SPECIAL CHARACTERS
+          # --- CASE 2: PRODUCTION ENVIRONMENT BULK LOAD ---
+          if ("${{ inputs.environment_name }}" -eq "production") {
+              Write-Host "Production context detected. Reconstructing secure cross-server streaming context..."
+              
+              $metaFile = "$env:GITHUB_WORKSPACE\staging-metadata\source_connection.txt"
+              if (-not (Test-Path $metaFile)) {
+                  throw "Critical Link Missing: Could not find archived staging tunnel details at: $metaFile"
+              }
+              
+              # Read your Staging tunnel port info directly from the uploaded file asset
+              $sourceServerRaw = (Get-Content -Path $metaFile).Trim()
+              Write-Host "Source Staging Database Tunnel targeted at: $sourceServerRaw"
+
+              # BUILD CONNECTION SECURELY TO YOUR STAGING DATABASE
               $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
-              $builder["Server"] = "$sourceServer,$sourcePort"
-              $builder["Database"] = $sourceDb
-              $builder["User Id"] = $sourceUser
-              $builder["Password"] = "${{ secrets.sql_password }}"
-              $builder["Connect Timeout"] = 15 # Fails faster if the port is dead
+              $builder["Server"] = $sourceServerRaw
+              $builder["Database"] = "TimesheetDb_tg"
+              $builder["User Id"] = "automation_user"
+              $builder["Password"] = $targetPass  # Swaps safely as long as password profiles align
+              $builder["Connect Timeout"] = 15
               
               try {
-                  Write-Host "Attempting connection to source tunnel: $($builder["Server"])"
+                  Write-Host "Opening tunnel back to Staging Environment database..."
                   $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
                   $sourceConn.Open()
-                  Write-Host "Connected successfully to source tunnel!"
 
-                  # Fetch Consultants
+                  # Fetch Consultants from your DB
                   $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
                   $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
                   $consultantsTable = New-Object System.Data.DataTable
                   $adapter.Fill($consultantsTable) | Out-Null
 
-                  # Fetch Clients
+                  # Fetch Clients from your DB
                   $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
                   $clientsTable = New-Object System.Data.DataTable
                   $adapter.Fill($clientsTable) | Out-Null
                   $sourceConn.Close()
 
-                  # CONNECT TO TARGET MACHINE
-                  $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
+                  # CONNECT TO HER ENVIRONMENT DATABASE
+                  $targetConnString = "Server=$targetServer;Database=$targetDb;User Id=$targetUser;Password=$targetPass;"
                   $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
                   $targetConn.Open()
 
-                  # Bulk Write Consultants safely using Least-Privilege BulkCopy
+                  # Bulk Write Consultants safely using BulkCopy
                   if ($consultantsTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup matrices..."
+                      Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup lines to Production..."
                       $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity)
                       $bulkCopy.DestinationTableName = "dbo.Consultant"
                       $bulkCopy.WriteToServer($consultantsTable)
@@ -160,24 +168,28 @@ jobs:
 
                   # Bulk Write Clients safely
                   if ($clientsTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup matrices..."
+                      Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup lines to Production..."
                       $bulkCopy.DestinationTableName = "dbo.Client"
                       $bulkCopy.WriteToServer($clientsTable)
                   }
 
                   $targetConn.Close()
-                  Write-Host "Data sync complete! All lookup frameworks matched cleanly."
+                  Write-Host "Data sync complete! Production environments seeded successfully."
               }
               catch {
-                  throw "Data Sync Failed! Verify that ngrok is running locally and your GitHub variables match port $sourcePort. Error Detail: $_"
+                  throw "Cross-Server Streaming Data Load Failed! Error Detail: $_"
               }
-          } else {
-              Write-Host "Staging context detected. Skipping cross-server lookups."
           }
 
-          Write-Host "Pre-flight checks and lookups passed successfully."
+      - name: Upload Staging Metadata For Production Phase
+        if: inputs.environment_name == 'staging'
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-tunnel-info
+          path: staging-metadata/
+          retention-days: 1
 
-          
+
       - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
         run: |

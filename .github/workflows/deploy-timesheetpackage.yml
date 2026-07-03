@@ -56,17 +56,33 @@ jobs:
         run: |
           curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
 
-# PRODUCTION DEPLOYMENT 
+  # PRODUCTION DEPLOYMENT 
   deploy-production:
     name: Deploy to Production
     needs: deploy-staging
-    uses: ./.github/workflows/deploy-timesheet-template.yml 
-    with: 
-      database: TimesheetDb_tg
-      environment_name: production
-    secrets:
-      sql_username: ${{ secrets.SQL_USERNAME }}
-      sql_password: ${{ secrets.SQL_PASSWORD }}
+    runs-on: windows-latest # ◄ Must run on the runner host to share artifacts
+    environment: production
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. DYNAMICALLY CAPTURE STAGING TUNNEL INFORMATION FROM PREVIOUS RUN
+      - name: Download Staging Tunnel Info
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-tunnel-info
+          path: staging-metadata/
+        continue-on-error: true # Prevents crashes if first run
+
+      # 2. CALL TEMPLATE FOR PRODUCTION WORK
+      - name: Execute Production Template
+        uses: ./.github/workflows/deploy-timesheet-template.yml 
+        with: 
+          database: TimesheetDb_tg
+          environment_name: production
+        secrets:
+          sql_username: ${{ secrets.SQL_USERNAME }}
+          sql_password: ${{ secrets.SQL_PASSWORD }}
 
 # PRODUCTION NOTIFICATION
   production-notify:
