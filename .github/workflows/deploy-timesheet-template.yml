@@ -178,22 +178,20 @@ jobs:
                   # Bulk Write Consultants safely using BulkCopy
                   if ($consultantsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup lines to Production..."
-                      # Fix: Open with connection parameter explicitly, then apply identity rules
-                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn)
-                      $bulkCopy.DestinationTableName = "dbo.Consultant"
                       
-                      # Safely preserve internal identity mappings across engines
-                      $bulkCopy.Options = [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity
+                      # Fix: Explicitly pass $null for the external transaction parameter to map the 3-argument constructor signature
+                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
+                      $bulkCopy.DestinationTableName = "dbo.Consultant"
                       $bulkCopy.WriteToServer($consultantsTable)
                   }
 
                   # Bulk Write Clients safely
                   if ($clientsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup lines to Production..."
-                      $bulkCopyClient = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn)
-                      $bulkCopyClient.DestinationTableName = "dbo.Client"
                       
-                      $bulkCopyClient.Options = [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity
+                      # Fix: Explicitly pass $null for the external transaction parameter here as well
+                      $bulkCopyClient = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
+                      $bulkCopyClient.DestinationTableName = "dbo.Client"
                       $bulkCopyClient.WriteToServer($clientsTable)
                   }
 
