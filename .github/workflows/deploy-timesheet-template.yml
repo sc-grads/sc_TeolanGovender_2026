@@ -223,43 +223,45 @@ jobs:
               throw "Critical Error: Could not locate the .ispac file at expected path: $ispacPath."
           }
 
-          Write-Host "Loading native SQL Integration Services management assemblies..."
-          [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.Management.IntegrationServices") | Out-Null
-          [System.Reflection.Assembly]::LoadWithPartialName("System.Data.SqlClient") | Out-Null
-
-          # Establish explicit SQL Authentication connection context to target catalog instance
-          $connString = "Data Source=$server;Initial Catalog=master;User Id=$user;Password=$pass;Encrypt=false;"
-          $sqlConn = New-Object System.Data.SqlClient.SqlConnection($connString)
+          Write-Host "Reading compiled .ispac project package stream..."
+          $bytes = [System.IO.File]::ReadAllBytes($ispacPath)
           
-          Write-Host "Connecting to remote Integration Services Catalog runtime..."
-          $ssisServer = New-Object Microsoft.SqlServer.Management.IntegrationServices.IntegrationServices($sqlConn)
+          # Convert the binary array into a giant hex string format that SQL Server interprets seamlessly
+          $hexString = "0x" + [System.BitConverter]::ToString($bytes).Replace("-", "")
 
-          # Verify Catalog structural hierarchy maps cleanly
-          if ($ssisServer.Catalogs.Count -eq 0) {
-              throw "Critical Infrastructure Error: The SSISDB catalog is completely absent or offline on the destination instance."
-          }
-
-          $catalog = $ssisServer.Catalogs["SSISDB"]
-          
-          # Dynamically provision the Target Catalog Folder if absent
           $folderName = "PracticeActivities"
-          if (-not $catalog.Folders.Contains($folderName)) {
-              Write-Host "Creating fresh environment project workspace folder: /SSISDB/$folderName"
-              $folder = New-Object Microsoft.SqlServer.Management.IntegrationServices.CatalogFolder($catalog, $folderName, "Automated deployment wrapper workspace folder.")
-              $folder.Create()
-          } else {
-              $folder = $catalog.Folders[$folderName]
-          }
-
-          Write-Host "Reading compiled .ispac project stream binary data package..."
-          $projectBinary = [System.IO.File]::ReadAllBytes($ispacPath)
-
-          # Deploy binary project safely to destination path node
           $projectName = "TimesheetIntegrationTestTwo"
-          Write-Host "Shipping and cataloging project binary bundle [/SSISDB/$folderName/$projectName]..."
-          $folder.DeployProject($projectName, $projectBinary)
 
-          Write-Host "SUCCESS: SSIS Package successfully shipped and mapped to SSISDB Catalog."
+          # Relational deployment script wrapper leveraging the engine procedure backend directly
+          $deploySql = @"
+          SET NOCOUNT ON;
+          USE [SSISDB];
+
+          -- 1. Verify and provision the Target Catalog folder node if missing
+          IF NOT EXISTS (SELECT 1 FROM [catalog].[folders] WHERE name = N'$folderName')
+          BEGIN
+              PRINT 'Creating missing SSIS catalog folder workspace...';
+              EXEC [catalog].[create_folder] @folder_name = N'$folderName';
+          END
+
+          -- 2. Stream the binary project hex payload straight into the database catalog engine
+          PRINT 'Executing T-SQL project bundle injection loop...';
+          DECLARE @project_binary VARBINARY(MAX) = $hexString;
+
+          EXEC [catalog].[deploy_project] 
+              @folder_name = N'$folderName', 
+              @project_name = N'$projectName', 
+              @project_stream = @project_binary;
+
+          PRINT 'SUCCESS: SSIS Package successfully cataloged via T-SQL Bridge Layer.';
+          "@
+
+          # Write out to local workspace storage temporary query asset file
+          $deployScriptPath = "$env:GITHUB_WORKSPACE\deploy_ispac_backdoor.sql"
+          Set-Content -Path $deployScriptPath -Value $deploySql -Force
+
+          Write-Host "Shipping and cataloging project binary bundle via T-SQL backend connector..."
+          sqlcmd -b -S $server -U $user -P $pass -d "SSISDB" -i $deployScriptPath
 
 
       - name: 3. Provision Scheduled SQL Agent Job with Alerts
