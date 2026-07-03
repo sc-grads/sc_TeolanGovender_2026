@@ -26,6 +26,14 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Fetch Staging Tunnel Info for Production Sync
+        if: inputs.environment_name == 'production'
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-tunnel-info
+          path: staging-metadata/
+        continue-on-error: true
  
       - name: Validate Configuration
         shell: powershell
@@ -181,14 +189,13 @@ jobs:
               }
           }
 
-      - name: Upload Staging Metadata For Production Phase
-        if: inputs.environment_name == 'staging'
+      - name: Archive Staging Metadata For Production Phase
+        if: inputs.environment_name == 'staging' && success()
         uses: actions/upload-artifact@v4
         with:
           name: staging-tunnel-info
           path: staging-metadata/
           retention-days: 1
-
 
       - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
@@ -229,7 +236,7 @@ jobs:
           Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
 
       - name: 3. Provision Scheduled SQL Agent Job with Alerts
-        if: inputs.environment_name != 'production' && inputs.environment_name != 'staging'
+        if: inputs.environment_name == 'staging'
         shell: powershell
         run: |
           $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
