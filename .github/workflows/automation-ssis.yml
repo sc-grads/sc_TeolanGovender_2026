@@ -11,7 +11,7 @@ jobs:
   # =======================================================
   deploy-my-pc:
     name: Deploy to My PC (Self-Hosted SSIS)
-    runs-on: ["self-hosted", "runner-my-pc"]
+    runs-on: ["self-hosted", "runner-tg-pc"]
 
     steps:
     - name: Checkout Repository
