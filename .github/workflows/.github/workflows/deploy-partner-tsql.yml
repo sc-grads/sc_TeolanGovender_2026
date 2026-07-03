@@ -9,7 +9,7 @@ jobs:
   deploy-and-migrate:
     name: Deploy and Migrate TimesheetDB
     # Executes locally on her machine via her background runner service
-    runs-on: ["self-hosted", "runner-coworker-pc"] 
+    runs-on: ["self-hosted", "runner-cm-pc"] 
 
     steps:
       - name: Checkout code
