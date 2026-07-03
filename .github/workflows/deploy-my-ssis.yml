@@ -108,7 +108,7 @@ jobs:
   # =======================================================
   deploy-to-partner-pc:
     name: Deploy to Partner PC
-    runs-on: ["self-hosted", "runner-coworker-pc"] # ◄ Runs on her local machine runner
+    runs-on: ["self-hosted", "runner-cm-pc"] # ◄ Runs on her local machine runner
     needs: deploy-to-my-pc # Wait until your local setup deploys successfully first
 
     steps:
