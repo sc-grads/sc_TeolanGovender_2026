@@ -157,27 +157,16 @@ jobs:
                   $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
                   $sourceConn.Open()
 
-                  # 1. Fetch Consultants from your DB
+                  # Fetch Consultants from your DB
                   $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
                   $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
                   $consultantsTable = New-Object System.Data.DataTable
                   $adapter.Fill($consultantsTable) | Out-Null
 
-                  # 2. Fetch Clients from your DB
+                  # Fetch Clients from your DB
                   $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
                   $clientsTable = New-Object System.Data.DataTable
                   $adapter.Fill($clientsTable) | Out-Null
-
-                  # 3. Fetch Timesheets from your DB
-                  $cmd.CommandText = "SELECT TimesheetEntryID, ConsultantID, ClientID, [Date], [DayOfWeek], [Description], BillableType, Comments, HoursWorked, StartTime, EndTime FROM dbo.Timesheet"
-                  $timesheetsTable = New-Object System.Data.DataTable
-                  $adapter.Fill($timesheetsTable) | Out-Null
-
-                  # 4. Fetch Leave rows from your DB
-                  $cmd.CommandText = "SELECT LeaveEntryID, ConsultantID, LeaveType, StartDate, EndDate, NumberOfDays FROM dbo.Leave"
-                  $leaveTable = New-Object System.Data.DataTable
-                  $adapter.Fill($leaveTable) | Out-Null
-
                   $sourceConn.Close()
 
                   # CONNECT TO HER ENVIRONMENT DATABASE
@@ -186,23 +175,11 @@ jobs:
                   $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
                   $targetConn.Open()
 
-                  # PRE-FLUSH: Truncate target transactional tables to prevent identity / foreign key collisions
-                  Write-Host "Flushing target production environment store to ensure clean snapshot alignment..."
-                  $truncCmd = New-Object System.Data.SqlClient.SqlCommand(@"
-                      ALTER TABLE dbo.Timesheet NOCHECK CONSTRAINT ALL;
-                      ALTER TABLE dbo.Leave NOCHECK CONSTRAINT ALL;
-                      TRUNCATE TABLE dbo.Timesheet;
-                      TRUNCATE TABLE dbo.Leave;
-                      TRUNCATE TABLE dbo.Consultant;
-                      TRUNCATE TABLE dbo.Client;
-                      ALTER TABLE dbo.Timesheet CHECK CONSTRAINT ALL;
-                      ALTER TABLE dbo.Leave CHECK CONSTRAINT ALL;
-                  ", $targetConn)
-                  $truncCmd.ExecuteNonQuery() | Out-Null
-
                   # Bulk Write Consultants safely using BulkCopy
                   if ($consultantsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup lines to Production..."
+                      
+                      # Fix: Explicitly pass $null for the external transaction parameter to map the 3-argument constructor signature
                       $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
                       $bulkCopy.DestinationTableName = "dbo.Consultant"
                       $bulkCopy.WriteToServer($consultantsTable)
@@ -211,29 +188,15 @@ jobs:
                   # Bulk Write Clients safely
                   if ($clientsTable.Rows.Count -gt 0) {
                       Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup lines to Production..."
+                      
+                      # Fix: Explicitly pass $null for the external transaction parameter here as well
                       $bulkCopyClient = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
                       $bulkCopyClient.DestinationTableName = "dbo.Client"
                       $bulkCopyClient.WriteToServer($clientsTable)
                   }
 
-                  # Bulk Write Timesheets safely
-                  if ($timesheetsTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($timesheetsTable.Rows.Count) Timesheet transaction entries to Production..."
-                      $bulkCopyTS = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
-                      $bulkCopyTS.DestinationTableName = "dbo.Timesheet"
-                      $bulkCopyTS.WriteToServer($timesheetsTable)
-                  }
-
-                  # Bulk Write Leave safely
-                  if ($leaveTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($leaveTable.Rows.Count) Leave balance rows to Production..."
-                      $bulkCopyLV = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
-                      $bulkCopyLV.DestinationTableName = "dbo.Leave"
-                      $bulkCopyLV.WriteToServer($leaveTable)
-                  }
-
                   $targetConn.Close()
-                  Write-Host "Data sync complete! Production database fully initialized with a pristine snapshot."
+                  Write-Host "Data sync complete! Production environments seeded successfully."
               }
               catch {
                   throw "Cross-Server Streaming Data Load Failed! Error Detail: $_"
