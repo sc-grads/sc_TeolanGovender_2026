@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     name: Deploy to My PC
-    runs-on: ["self-hosted", "runner-my-pc"] # ◄ Your local runner label
+    runs-on: ["self-hosted", "runner-tg-pc"] # ◄ Your local runner label
 
     steps:
     - name: Checkout Repository
