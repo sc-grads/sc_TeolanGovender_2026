@@ -80,9 +80,12 @@ jobs:
           $pass   = "${{ secrets.sql_password }}"
           $db     = "${{ inputs.database }}"
           
-          # Outbound connection tracking parameters back to your machine
-          $myTunnel = "0.tcp.sa.ngrok.io,23217" 
-          $myUser   = "automation_user"
+          # 1. READ TUNNEL INFO DYNAMICALLY (Avoid Hardcoding entirely)
+          # Assuming you store your source ngrok address/port in GitHub Vars
+          $sourceServer = "${{ vars.SOURCE_TUNNEL_SERVER }}" # e.g., 0.tcp.sa.ngrok.io
+          $sourcePort   = "${{ vars.SOURCE_TUNNEL_PORT }}"   # e.g., 21715
+          $sourceDb     = "TimesheetDb_tg"
+          $sourceUser   = "automation_user"
 
           # Standard deployment sequence
           $sqlFiles = @(
@@ -98,7 +101,6 @@ jobs:
             $filePath = "SSIS-Project\Scripts\$file"
             if (Test-Path $filePath) {
               Write-Host "Executing: $file"
-              
               if ($file -eq "CreateDatabase.sql") {
                 sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
               } else {
@@ -113,56 +115,69 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production context detected. Initiating secure client-side data streaming..."
               
-              # 1. BUILD CONNECTION SECURELY TO BIND SPECIAL CHARACTERS
+              if ([string]::IsNullOrWhiteSpace($sourceServer) -or [string]::IsNullOrWhiteSpace($sourcePort)) {
+                  throw "Source tunnel variables (SOURCE_TUNNEL_SERVER / SOURCE_TUNNEL_PORT) are missing or empty!"
+              }
+
+              # BUILD CONNECTION SECURELY TO BIND SPECIAL CHARACTERS
               $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
-              $builder["Server"] = "0.tcp.sa.ngrok.io,23217"
-              $builder["Database"] = "TimesheetDb_tg"
-              $builder["User Id"] = "automation_user"
-              $builder["Password"] = "${{ secrets.sql_password }}" # ◄ Bound safely without string interpolation
+              $builder["Server"] = "$sourceServer,$sourcePort"
+              $builder["Database"] = $sourceDb
+              $builder["User Id"] = $sourceUser
+              $builder["Password"] = "${{ secrets.sql_password }}"
+              $builder["Connect Timeout"] = 15 # Fails faster if the port is dead
               
-              $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
-              $sourceConn.Open()
+              try {
+                  Write-Host "Attempting connection to source tunnel: $($builder["Server"])"
+                  $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
+                  $sourceConn.Open()
+                  Write-Host "Connected successfully to source tunnel!"
 
-              # Fetch Consultants
-              $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
-              $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
-              $consultantsTable = New-Object System.Data.DataTable
-              $adapter.Fill($consultantsTable) | Out-Null
+                  # Fetch Consultants
+                  $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
+                  $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
+                  $consultantsTable = New-Object System.Data.DataTable
+                  $adapter.Fill($consultantsTable) | Out-Null
 
-              # Fetch Clients
-              $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
-              $clientsTable = New-Object System.Data.DataTable
-              $adapter.Fill($clientsTable) | Out-Null
-              $sourceConn.Close()
+                  # Fetch Clients
+                  $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
+                  $clientsTable = New-Object System.Data.DataTable
+                  $adapter.Fill($clientsTable) | Out-Null
+                  $sourceConn.Close()
 
-              # 2. CONNECT TO HER MACHINE: Uses her target parameters ($server, $user, $pass)
-              $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
-              $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
-              $targetConn.Open()
+                  # CONNECT TO TARGET MACHINE
+                  $targetConnString = "Server=$server;Database=$db;User Id=$user;Password=$pass;"
+                  $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
+                  $targetConn.Open()
 
-              # Bulk Write Consultants safely using Least-Privilege BulkCopy
-              if ($consultantsTable.Rows.Count -gt 0) {
-                  Write-Host "Streaming Consultant lookup matrices..."
-                  $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity)
-                  $bulkCopy.DestinationTableName = "dbo.Consultant"
-                  $bulkCopy.WriteToServer($consultantsTable)
+                  # Bulk Write Consultants safely using Least-Privilege BulkCopy
+                  if ($consultantsTable.Rows.Count -gt 0) {
+                      Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup matrices..."
+                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity)
+                      $bulkCopy.DestinationTableName = "dbo.Consultant"
+                      $bulkCopy.WriteToServer($consultantsTable)
+                  }
+
+                  # Bulk Write Clients safely
+                  if ($clientsTable.Rows.Count -gt 0) {
+                      Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup matrices..."
+                      $bulkCopy.DestinationTableName = "dbo.Client"
+                      $bulkCopy.WriteToServer($clientsTable)
+                  }
+
+                  $targetConn.Close()
+                  Write-Host "Data sync complete! All lookup frameworks matched cleanly."
               }
-
-              # Bulk Write Clients safely
-              if ($clientsTable.Rows.Count -gt 0) {
-                  Write-Host "Streaming Client lookup matrices..."
-                  $bulkCopy.DestinationTableName = "dbo.Client"
-                  $bulkCopy.WriteToServer($clientsTable)
+              catch {
+                  throw "Data Sync Failed! Verify that ngrok is running locally and your GitHub variables match port $sourcePort. Error Detail: $_"
               }
-
-              $targetConn.Close()
-              Write-Host "Data sync complete! All lookup frameworks matched cleanly."
           } else {
               Write-Host "Staging context detected. Skipping cross-server lookups."
           }
 
           Write-Host "Pre-flight checks and lookups passed successfully."
 
+          
       - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
         run: |
