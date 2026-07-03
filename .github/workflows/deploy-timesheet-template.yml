@@ -1,12 +1,12 @@
-name: Reusable timesheet Deploy
- 
+name: Reusable Timesheet Deploy
+
 on:
   workflow_call:
     inputs:
       database:
         required: true
         type: string
-      environment_name:
+      runner_label:
         required: true
         type: string
     secrets:
@@ -14,360 +14,127 @@ on:
         required: true
       sql_password:
         required: true
-      local_username:
-        required: false
-      local_password:
-        required: false
- 
+
 jobs:
   deploy:
     name: Deploy Timesheet Database
-    runs-on: windows-latest
- 
-    environment:
-      name: ${{ inputs.environment_name }}
- 
+    # This forces GitHub to use the specific person's computer
+    runs-on: ["self-hosted", "${{ inputs.runner_label }}"]
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Fetch Staging Tunnel Info for Production Sync
-        if: inputs.environment_name == 'production'
-        uses: actions/download-artifact@v4
-        with:
-          name: staging-tunnel-info
-          path: staging-metadata/
-        continue-on-error: true
- 
       - name: Validate Configuration
         shell: powershell
         run: |
-          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_SERVER }}")) { throw "SQL_SERVER is not configured" }
-          if ([string]::IsNullOrWhiteSpace("${{ vars.SQL_PORT }}")) { throw "SQL_PORT is not configured" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) { throw "SQL_USERNAME is not configured" }
           if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "SQL_PASSWORD is not configured" }
 
       - name: 1. Initialize SSISDB Catalog
         shell: powershell
         run: |
-          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          # 'localhost' targets the SQL Server running on the runner's actual PC
+          $server = "localhost"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
           $setupSql = @"
           SET NOCOUNT ON;
-
-          -- 1. Enable CLR Engine (Prerequisite for hosting SSISDB features)
           IF (SELECT value_in_use FROM sys.configurations WHERE name = 'clr enabled') = 0
           BEGIN
-              PRINT 'Enabling CLR...';
               EXEC sp_configure 'clr enabled', 1;
               RECONFIGURE;
           END
 
-          -- 2. Dynamically instantiate the SSISDB catalog if it is absent
           IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SSISDB')
           BEGIN
-              PRINT 'SSISDB catalog not found. Provisioning fresh integration catalog...';
               EXEC [master].[dbo].[xp_instance_regwrite] N'HKEY_LOCAL_MACHINE', N'SOFTWARE\Microsoft\MSSQLServer\SSISDB', N'ServerRequiresEncryption', REG_DWORD, 1;
-              
               DECLARE @catalog_password NVARCHAR(128) = N'Password@123'; 
               EXEC [catalog].[create_catalog] @password = @catalog_password;
-              PRINT 'SSISDB Catalog built successfully.';
-          END
-          ELSE
-          BEGIN
-              PRINT 'SSISDB Catalog already provisioned on destination.';
           END
           "@
-
-          Write-Host "Connecting over tunnel to target instance ($server) to inspect SSIS catalog status..."
           sqlcmd -b -S $server -U $user -P $pass -d "master" -Q $setupSql
- 
-      - name: Run Pre-Flight Database Scripts
+
+      - name: 2. Run Pre-Flight Database Scripts
         shell: powershell
         run: |
-          # Target Environment metrics (passed by GitHub Environment context)
-          $targetServer = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
-          $targetUser   = "${{ secrets.sql_username }}"
-          $targetPass   = "${{ secrets.sql_password }}"
-          $targetDb     = "${{ inputs.database }}"
-
-          # Local Staging credentials for Production cross-server bridge executions
-          $localUser    = "${{ secrets.local_username }}"
-          $localPass    = "${{ secrets.local_password }}"
-
-          # Standard deployment sequence
+          $server = "localhost"
+          $user   = "${{ secrets.sql_username }}"
+          $pass   = "${{ secrets.sql_password }}"
+          $db     = "${{ inputs.database }}"
+          
           $sqlFiles = @(
             "CreateDatabase.sql",
             "CreateTables.sql",
             "CreateIndexes.sql",
             "CreateStoredProcedure.sql"
           )
-
-          Write-Host "Starting Pre-Flight Database Executions..."
+          
           foreach ($file in $sqlFiles) {
             $filePath = "SSIS-Project\Scripts\$file"
             if (Test-Path $filePath) {
-              Write-Host "Executing: $file on Target Database..."
               if ($file -eq "CreateDatabase.sql") {
-                sqlcmd -b -S $targetServer -U $targetUser -P $targetPass -d "master" -i $filePath
+                sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
               } else {
-                sqlcmd -b -S $targetServer -U $targetUser -P $targetPass -d $targetDb -i $filePath
+                sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
               }
-            } else {
-              throw "Critical pre-flight file missing from workspace: $filePath"
             }
           }
 
-          # --- CASE 1: STAGING ENVIRONMENT PROCESSING ---
-          if ("${{ inputs.environment_name }}" -eq "staging") {
-              Write-Host "Staging context detected. Archiving connection parameters for Production phase..."
-              $metaDir = "$env:GITHUB_WORKSPACE\staging-metadata"
-              if (-not (Test-Path $metaDir)) { New-Item -ItemType Directory -Path $metaDir | Out-Null }
-              
-              # Save your staging tunnel parameters safely to file
-              $targetServer | Out-File -FilePath "$metaDir\source_connection.txt" -Force
-              Write-Host "Staging parameters archived successfully."
-          }
-
-          # --- CASE 2: PRODUCTION ENVIRONMENT BULK LOAD ---
-          if ("${{ inputs.environment_name }}" -eq "production") {
-              Write-Host "Production context detected. Reconstructing secure cross-server streaming context..."
-              
-              $metaFile = "$env:GITHUB_WORKSPACE\staging-metadata\source_connection.txt"
-              if (-not (Test-Path $metaFile)) {
-                  throw "Critical Link Missing: Could not find archived staging tunnel details at: $metaFile"
-              }
-              
-              # Read your Staging tunnel port info directly from the uploaded file asset
-              $sourceServerRaw = (Get-Content -Path $metaFile).Trim()
-              Write-Host "Source Staging Database Tunnel targeted at: $sourceServerRaw"
-
-              # BUILD CONNECTION SECURELY TO YOUR STAGING DATABASE
-              $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
-              $builder["Server"] = $sourceServerRaw
-              $builder["Database"] = "TimesheetDb_tg"
-              $builder["User Id"] = if (![string]::IsNullOrWhiteSpace($localUser)) { $localUser } else { "automation_user" }
-              $builder["Password"] = $localPass
-              $builder["Connect Timeout"] = 15
-              
-              try {
-                  Write-Host "Opening tunnel back to Staging Environment database..."
-                  $sourceConn = New-Object System.Data.SqlClient.SqlConnection($builder.ConnectionString)
-                  $sourceConn.Open()
-
-                  # Fetch Consultants from your DB
-                  $cmd = New-Object System.Data.SqlClient.SqlCommand("SELECT ConsultantID, FirstName, LastName FROM dbo.Consultant", $sourceConn)
-                  $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($cmd)
-                  $consultantsTable = New-Object System.Data.DataTable
-                  $adapter.Fill($consultantsTable) | Out-Null
-
-                  # Fetch Clients from your DB
-                  $cmd.CommandText = "SELECT ClientID, ClientName FROM dbo.Client"
-                  $clientsTable = New-Object System.Data.DataTable
-                  $adapter.Fill($clientsTable) | Out-Null
-                  $sourceConn.Close()
-
-                  # CONNECT TO HER ENVIRONMENT DATABASE
-                  Write-Host "Connecting to production engine target instance..."
-                  $targetConnString = "Server=$targetServer;Database=$targetDb;User Id=$targetUser;Password=$targetPass;"
-                  $targetConn = New-Object System.Data.SqlClient.SqlConnection($targetConnString)
-                  $targetConn.Open()
-
-                  # Bulk Write Consultants safely using BulkCopy
-                  if ($consultantsTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($consultantsTable.Rows.Count) Consultant lookup lines to Production..."
-                      
-                      # Fix: Explicitly pass $null for the external transaction parameter to map the 3-argument constructor signature
-                      $bulkCopy = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
-                      $bulkCopy.DestinationTableName = "dbo.Consultant"
-                      $bulkCopy.WriteToServer($consultantsTable)
-                  }
-
-                  # Bulk Write Clients safely
-                  if ($clientsTable.Rows.Count -gt 0) {
-                      Write-Host "Streaming $($clientsTable.Rows.Count) Client lookup lines to Production..."
-                      
-                      # Fix: Explicitly pass $null for the external transaction parameter here as well
-                      $bulkCopyClient = New-Object System.Data.SqlClient.SqlBulkCopy($targetConn, [System.Data.SqlClient.SqlBulkCopyOptions]::KeepIdentity, $null)
-                      $bulkCopyClient.DestinationTableName = "dbo.Client"
-                      $bulkCopyClient.WriteToServer($clientsTable)
-                  }
-
-                  $targetConn.Close()
-                  Write-Host "Data sync complete! Production environments seeded successfully."
-              }
-              catch {
-                  throw "Cross-Server Streaming Data Load Failed! Error Detail: $_"
-              }
-          }
-
-      - name: Archive Staging Metadata For Production Phase
-        if: inputs.environment_name == 'staging' && success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: staging-tunnel-info
-          path: staging-metadata/
-          retention-days: 1
-
-      - name: 2. Locate/Verify SSIS Project and Deploy ISPAC
+      - name: 3. Locate/Verify SSIS Project and Deploy ISPAC
         shell: powershell
         run: |
-          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $server = "localhost"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
 
           $ispacPath = "$env:GITHUB_WORKSPACE\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
-          if (-not (Test-Path $ispacPath)) {
-              throw "Critical Error: Could not locate the .ispac file at expected path: $ispacPath."
-          }
-
-          Write-Host "Locating ISDeploymentWizard.exe on the runner image..."
+          
           $searchPaths = @("C:\Program Files", "C:\Program Files (x86)")
           $wizardExe = Get-ChildItem -Path $searchPaths -Filter "ISDeploymentWizard.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 
           if ($null -eq $wizardExe) {
-              throw "Critical Error: ...ISDeploymentWizard.exe was not found anywhere on the Windows runner image."
+              throw "ISDeploymentWizard.exe was not found. Please ensure SSIS is installed on this machine."
           }
 
-          $wizardPath = $wizardExe.FullName
-          
-          $destinationProject = "/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo"
-          Write-Host "Deploying bundle to remote SSISDB instance..."
-
-          & $wizardPath `
+          & $wizardExe.FullName `
               /S `
               /SourceType:Project `
               /SourcePath:"$ispacPath" `
               /DestinationType:SSIS `
               /DestinationServer:"$server" `
-              /DestinationPath:"$destinationProject" `
+              /DestinationPath:"/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo" `
               /AuthType:SQL `
               /UserName:"$user" `
               /Password:"$pass"
-              
-          Write-Host "SSIS Package successfully shipped and mapped to SSISDB Catalog."
 
-      - name: 3. Provision Scheduled SQL Agent Job with Alerts
-        if: inputs.environment_name == 'staging'
+      - name: 4. Provision Scheduled SQL Agent Job
         shell: powershell
         run: |
-          $server = "${{ vars.SQL_SERVER }},${{ vars.SQL_PORT }}"
+          $server = "localhost"
           $user   = "${{ secrets.sql_username }}"
           $pass   = "${{ secrets.sql_password }}"
-
           $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
           
           $provisionJobSql = @"
-          SET NOCOUNT ON;
-
-          -- 1. SAFE USER MAPPING ENGAGEMENT
-          USE [master];
-          DECLARE @agentServiceName NVARCHAR(500);
-          DECLARE @agentLoginName NVARCHAR(500);
-
-          EXEC master.dbo.xp_instance_regread 
-              N'HKEY_LOCAL_MACHINE', 
-              N'SYSTEM\CurrentControlSet\Services\SQLSERVERAGENT', 
-              N'ObjectName', 
-              @agentServiceName OUTPUT;
-
-          IF @agentServiceName LIKE 'NT SERVICE%'
-          BEGIN
-              SET @agentLoginName = @agentServiceName;
-          END
-          ELSE
-          BEGIN
-              SET @agentLoginName = N'NT SERVICE\SQLSERVERAGENT';
-          END
-
-          BEGIN TRY
-              USE [SSISDB];
-              IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = @agentLoginName) AND @agentLoginName IS NOT NULL
-              BEGIN
-                  PRINT 'Registering server login for: ' + @agentLoginName;
-                  DECLARE @sqlLogin NVARCHAR(max) = 'CREATE LOGIN [' + @agentLoginName + '] FROM WINDOWS;';
-                  EXEC(@sqlLogin);
-              END
-
-              IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = @agentLoginName) AND @agentLoginName IS NOT NULL
-              BEGIN
-                  PRINT 'Mapping database user for: ' + @agentLoginName;
-                  DECLARE @sqlUser NVARCHAR(max) = 'CREATE USER [' + @agentLoginName + '] FOR LOGIN [' + @agentLoginName + '];';
-                  EXEC(@sqlUser);
-              END
-
-              IF @agentLoginName IS NOT NULL AND EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'ssis_admin')
-              BEGIN
-                  EXEC sp_addrolemember @rolename = 'ssis_admin', @membername = @agentLoginName;
-                  PRINT 'Permissions aligned cleanly for ' + @agentLoginName;
-              END
-          END TRY
-          BEGIN CATCH
-              PRINT 'Note: Deployment user lacks master security access to register logins. Skipping background alignment...';
-          END CATCH
-
-          -- 2. RESET JOB ENVIRONMENT
           USE [msdb];
-          
-          DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."';
-          DECLARE @operatorName NVARCHAR(128) = N'Pipeline_Admin';
-          DECLARE @operatorEmail NVARCHAR(128) = N'your_email@domain.com';
-
-          IF NOT EXISTS (SELECT name FROM msdb.dbo.sysoperators WHERE name = @operatorName)
-          BEGIN
-              PRINT 'Registering notification operator...';
-              EXEC msdb.dbo.sp_add_operator @name = @operatorName, @enabled = 1, @email_address = @operatorEmail;
-          END
-          ELSE
-          BEGIN
-              EXEC msdb.dbo.sp_update_operator @name = @operatorName, @email_address = @operatorEmail;
-          END
-
           IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
-          BEGIN
-              PRINT 'Stale job configuration found. Sweeping properties...';
               EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule = 1;
-          END
 
-          PRINT 'Creating fresh automated runtime execution wrapper...';
           DECLARE @jobId BINARY(16);
-          
-          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', 
-              @enabled = 1, 
-              @notify_level_email = 2,
-              @notify_email_operator_name = @operatorName,
-              @job_id = @jobId OUTPUT;
+          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
 
           EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
               @subsystem = N'SSIS',
-              @command = @ssisCommand,
+              @command = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."',
               @retry_attempts = 0;
 
-          EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, 
-              @name = N'Timesheet_30Sec_Interval',
-              @enabled = 1,
-              @freq_type = 4,
-              @freq_interval = 1,
-              @freq_subday_type = 2,
-              @freq_subday_interval = 30,
-              @active_start_time = 000000;
+          EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, @name = N'Timesheet_30Sec_Interval', @enabled = 1,
+              @freq_type = 4, @freq_interval = 1, @freq_subday_type = 2, @freq_subday_interval = 30;
 
           EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
-          PRINT 'Job provisioned and schedule active.';
           "@
 
           Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
-
-          Write-Host "Provisioning fresh target job template execution parameters..."
           sqlcmd -b -S $server -U $user -P $pass -d "msdb" -i $jobScriptPath
- 
-      - name: Deployment Successful
-        if: success()
-        shell: powershell
-        run: |
-          Write-Host "========================================"
-          Write-Host "PRE-FLIGHT, PACKAGE DEPLOY, AND SCHEDULE ENGINE COMPLETE"
-          Write-Host "Environment : ${{ inputs.environment_name }}"
-          Write-Host "========================================"

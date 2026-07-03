@@ -2,107 +2,47 @@ name: Timesheet Database Deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      target_pc:
+        description: 'Select Target Machine'
+        required: true
+        default: 'tg-pc'
+        type: choice
+        options:
+          - 'tg-pc'
+
   push:
     paths:
       - 'SSIS-Project/Timesheets/**'
       - 'SSIS-Project/Scripts/**'
 
 jobs:
-# STAGING DEPLOYMENT (Runs Pre-flight SQL scripts + Triggers SSIS)
-  deploy-staging:
-    name: Deploy to Staging
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.select.outputs.matrix }}
+    steps:
+      - id: select
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo 'matrix=["tg-pc", "coworker-pc"]' >> $GITHUB_OUTPUT
+          else
+            if [ "${{ github.event.inputs.target_pc }}" = "both" ]; then
+              echo 'matrix=["tg-pc", "coworker-pc"]' >> $GITHUB_OUTPUT
+            else
+              echo 'matrix=["${{ github.event.inputs.target_pc }}"]' >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  deploy:
+    needs: set-matrix
+    strategy:
+      matrix:
+        target: ${{ fromJson(needs.set-matrix.outputs.targets) }}
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
       database: TimesheetDb_tg
-      environment_name: staging
+      runner_label: runner-${{ matrix.target }}
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
-
-# STAGING NOTIFICATION
-  staging-notify:
-    name: Notify Staging Success
-    needs: deploy-staging
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
-
-      - name: Send Staging Success Notification
-        run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"0078D7\",
-            \"title\":\"Timesheet Integration - Staging Run Successful\",
-            \"summary\":\"Staging SSIS package triggered\",
-            \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"TimesheetDb_tg\"},
-                  {\"name\":\"Environment\",\"value\":\"Staging\"},
-                  {\"name\":\"Status\",\"value\":\"PRE-FLIGHT & SSIS EXECUTION SENT\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
-          }" > payload.json
-
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
-
-# PRODUCTION DEPLOYMENT 
-  deploy-production:
-    name: Deploy to Production
-    needs: deploy-staging
-    uses: ./.github/workflows/deploy-timesheet-template.yml 
-    with: 
-      database: TimesheetDb_tg
-      environment_name: production
-    secrets:
-      sql_username: ${{ secrets.SQL_USERNAME }}
-      sql_password: ${{ secrets.SQL_PASSWORD }}
-      local_username: ${{ secrets.LOCAL_SQL_USERNAME }}
-      local_password: ${{ secrets.LOCAL_SQL_PASSWORD }}
-
-# PRODUCTION NOTIFICATION
-  production-notify:
-    name: Notify Production Success
-    needs: deploy-production
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Current Time
-        id: time
-        run: echo "time=$(TZ='Africa/Johannesburg' date '+%Y-%m-%d %H:%M')" >> $GITHUB_OUTPUT
-
-      - name: Send Production Success Notification
-        run: |
-          echo "{
-            \"@type\":\"MessageCard\",
-            \"@context\":\"http://schema.org/extensions\",
-            \"themeColor\":\"28A745\",
-            \"title\":\"🚀 Production Timesheet Processing Completed\",
-            \"summary\":\"Production automated run successful\",
-            \"sections\":[
-              {
-                \"facts\":[
-                  {\"name\":\"Repository\",\"value\":\"${{ github.repository }}\"},
-                  {\"name\":\"Database\",\"value\":\"TimesheetDb_tg\"},
-                  {\"name\":\"Environment\",\"value\":\"Production\"},
-                  {\"name\":\"Status\",\"value\":\"SUCCESS\"},
-                  {\"name\":\"Time\",\"value\":\"${{ steps.time.outputs.time }}\"}
-                ]
-              }
-            ]
-          }" > payload.json
-
-      - name: Send to Teams
-        env:
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d @payload.json "$TEAMS_WEBHOOK_URL"
