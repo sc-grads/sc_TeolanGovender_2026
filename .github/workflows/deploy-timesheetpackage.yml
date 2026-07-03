@@ -10,6 +10,8 @@ on:
         type: choice
         options:
           - 'tg-pc'
+          - 'cm-pc'
+          - 'both'
 
   push:
     paths:
@@ -25,10 +27,10 @@ jobs:
       - id: select
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            echo 'matrix=["tg-pc", "coworker-pc"]' >> $GITHUB_OUTPUT
+            echo 'matrix=["tg-pc", "cm-pc"]' >> $GITHUB_OUTPUT
           else
             if [ "${{ github.event.inputs.target_pc }}" = "both" ]; then
-              echo 'matrix=["tg-pc", "coworker-pc"]' >> $GITHUB_OUTPUT
+              echo 'matrix=["tg-pc", "cm-pc"]' >> $GITHUB_OUTPUT
             else
               echo 'matrix=["${{ github.event.inputs.target_pc }}"]' >> $GITHUB_OUTPUT
             fi
