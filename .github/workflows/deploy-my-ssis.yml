@@ -15,7 +15,7 @@ jobs:
 
     defaults:
       run:
-        shell: powershell -ExecutionPolicy Bypass -Command Clean-Context; $ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true; #
+        shell: powershell
 
     steps:
     - name: Checkout Repository
@@ -24,6 +24,10 @@ jobs:
     - name: 1. Run Pre-Flight Database Scripts
       shell: powershell
       run: |
+
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $dbName = "TimesheetDb_tg"
         $sqlFiles = @("CreateDatabase.sql", "CreateTables.sql", "CreateIndexes.sql", "CreateStoredProcedure.sql")
         
@@ -42,6 +46,9 @@ jobs:
     - name: 2. Locate Visual Studio DevEnv Tool
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
         if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
         $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
@@ -52,6 +59,9 @@ jobs:
     - name: 3. Build SSIS Project to ISPAC
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $dtprojPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj"
         & "${{ env.DEVENV_PATH }}" "$dtprojPath" /Build "Development"
        
@@ -63,6 +73,9 @@ jobs:
     - name: 4. Deploy Package to SSISDB Catalog
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $projectPath = "${{ env.ISPAC_PATH }}"
         $projectName = [System.IO.Path]::GetFileNameWithoutExtension($projectPath)
         $fileBytes = [System.IO.File]::ReadAllBytes($projectPath)
@@ -88,6 +101,9 @@ jobs:
     - name: 5. Configure SQL Agent Automated Scheduler
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
         $connection.Open()
         
@@ -117,8 +133,8 @@ jobs:
     
     # ◄ Ensure this defaults block is present right here!
     defaults:
-      run:
-        shell: powershell -ExecutionPolicy Bypass -Command Clean-Context; $ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true; #
+    run:
+      shell: powershell
 
     steps:
     - name: Checkout Repository
@@ -126,6 +142,9 @@ jobs:
 
     - name: 1. Run Your Pre-Flight Database Scripts on Her PC
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $dbName = "TimesheetDb_tg"
         $sqlFiles = @("CreateDatabase.sql", "CreateTables.sql", "CreateIndexes.sql", "CreateStoredProcedure.sql")
         
@@ -145,6 +164,9 @@ jobs:
     - name: 2. Locate Visual Studio DevEnv Tool on Her PC
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
         if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
         $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
@@ -155,6 +177,9 @@ jobs:
     - name: 3. Build Your SSIS Project to ISPAC on Her PC
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $dtprojPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj"
         & "${{ env.DEVENV_PATH }}" "$dtprojPath" /Build "Development"
        
@@ -167,6 +192,9 @@ jobs:
     - name: 4. Deploy Package to Her SSISDB Catalog
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $projectPath = "${{ env.ISPAC_PATH }}"
         $projectName = [System.IO.Path]::GetFileNameWithoutExtension($projectPath)
         $fileBytes = [System.IO.File]::ReadAllBytes($projectPath)
@@ -193,6 +221,9 @@ jobs:
     - name: 5. Configure Her SQL Agent Automated Scheduler
       shell: powershell
       run: |
+        $ErrorActionPreference = "Stop"
+        $PSNativeCommandUseErrorActionPreference = $true
+
         $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
         $connection.Open()
         
