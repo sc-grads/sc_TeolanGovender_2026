@@ -21,6 +21,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        clean: false #Prevents the runner from choking on the broken submodule files
 
     - name: 1. Run Pre-Flight Database Scripts
       run: |
@@ -135,6 +137,8 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        clean: false #Prevents the runner from choking on the broken submodule files
 
     - name: 1. Run Your Pre-Flight Database Scripts on Her PC
       run: |
