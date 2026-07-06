@@ -133,8 +133,8 @@ jobs:
     
     # ◄ Ensure this defaults block is present right here!
     defaults:
-    run:
-      shell: powershell
+      run:
+        shell: powershell
 
     steps:
     - name: Checkout Repository
