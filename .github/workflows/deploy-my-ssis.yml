@@ -147,16 +147,34 @@ jobs:
 
         $dbName = "TimesheetDb_tg"
         $sqlFiles = @("CreateDatabase.sql", "CreateTables.sql", "CreateIndexes.sql", "CreateStoredProcedure.sql")
-        
-        Write-Host "Executing database pre-flight scripts via Windows Auth on Her Instance..."
+
+        Write-Host "Executing database pre-flight scripts via SQL Authentication on Her Instance..."
+
         foreach ($file in $sqlFiles) {
           $filePath = "${{ github.workspace }}\SSIS-Project\Scripts\$file"
+
           if (Test-Path $filePath) {
             if ($file -eq "CreateDatabase.sql") {
-              sqlcmd -b -S . -E -d "master" -i "$filePath"
-            } else {
-              sqlcmd -b -S . -E -d $dbName -i "$filePath"
+            sqlcmd `
+              -b `
+              -S . `
+              -U "${{ secrets.SQL_USERNAME }}" `
+              -P "${{ secrets.SQL_PASSWORD }}" `
+              -d master `
+              -i "$filePath"
             }
+            else {
+              sqlcmd `
+                -b `
+                -S . `
+                -U "${{ secrets.SQL_USERNAME }}" `
+                -P "${{ secrets.SQL_PASSWORD }}" `
+                -d $dbName `
+                -i "$filePath"
+            }
+          }
+          else {
+            Write-Warning "File not found: $filePath"
           }
         }
 
