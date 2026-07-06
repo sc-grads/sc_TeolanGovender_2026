@@ -199,7 +199,8 @@ jobs:
         $fileBytes = [System.IO.File]::ReadAllBytes($projectPath)
         $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
         
-        $connStr = "Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;"
+        # Updated to use environmental SQL target credentials instead of Integrated Windows Security
+        $connStr = "Data Source=.;Initial Catalog=master;User ID=${{ secrets.SQL_USERNAME }};Password='${{ secrets.SQL_PASSWORD }}';TrustServerCertificate=True;Encrypt=False;"
         $connection = New-Object System.Data.SqlClient.SqlConnection($connStr)
         $connection.Open()
         
@@ -221,7 +222,9 @@ jobs:
         $ErrorActionPreference = "Stop"
         $PSNativeCommandUseErrorActionPreference = $true
 
-        $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=.;Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;")
+        # Updated to use environmental SQL target credentials instead of Integrated Windows Security
+        $connStr = "Data Source=.;Initial Catalog=master;User ID=${{ secrets.SQL_USERNAME }};Password='${{ secrets.SQL_PASSWORD }}';TrustServerCertificate=True;Encrypt=False;"
+        $connection = New-Object System.Data.SqlClient.SqlConnection($connStr)
         $connection.Open()
         
         $jobName = "Run_Timesheet_Package"
