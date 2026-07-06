@@ -12,6 +12,7 @@ jobs:
   deploy-to-my-pc:
     name: Deploy to My PC
     runs-on: ["self-hosted", "runner-tg-pc"]
+    environment: staging
 
     defaults:
       run:
@@ -125,6 +126,7 @@ jobs:
     name: Deploy to Partner PC
     runs-on: ["self-hosted", "runner-cm-pc"]
     needs: deploy-to-my-pc
+    environment: production
     
     defaults:
       run:
