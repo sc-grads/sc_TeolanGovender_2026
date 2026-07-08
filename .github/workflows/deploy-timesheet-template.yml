@@ -49,15 +49,16 @@ jobs:
         run: |
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production detected. Applying folder permission adjustments..."
-              $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
               
-              # Using the built-in Windows group avoids account name mapping issues completely
+              # Point directly to the folder path string
+              $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
               $agentAccount = "Authenticated Users"
               
               Write-Host "Target Folder: $folderPath"
               Write-Host "Target Group: $agentAccount"
               
-              icacls "$folderPath" /grant "${agentAccount}:(OI)(CI)F" /T
+              # Adding `\*` forces icacls to explicitly resolve the target contents cleanly
+              icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
           } else {
               Write-Host "Staging environment detected. Skipping local folder permission modifications."
           }
