@@ -1,8 +1,6 @@
 name: Deploy My SSIS Package To Both PCs
 
 on:
-  workflow_dispatch:
-
   push:
     branches:
       - master
@@ -19,20 +17,20 @@ jobs:
 
       - name: 1. Run Pre-Flight Create Database Script
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -i "DatabaseAdministration/Mastering-SSIS/Resources/SSISDemos/SSISDemos/DeploymentDemo/CreateDatabase.sql" -b
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -i "SSIS-Project/Scripts/CreateDatabase.sql" -b
         shell: pwsh
 
       - name: 2. Deploy Database Schema Tables
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "DatabaseAdministration/Mastering-SSIS/Resources/SSISDemos/SSISDemos/DeploymentDemo/CreateTables.sql" -b
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "SSIS-Project/Scripts/CreateTables.sql" -b
         shell: pwsh
 
       - name: 3. Deploy Database Indexes
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "DatabaseAdministration/Mastering-SSIS/Resources/SSISDemos/SSISDemos/DeploymentDemo/CreateIndexes.sql" -b
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "SSIS-Project/Scripts/CreateIndexes.sql" -b
         shell: pwsh
 
       - name: 4. Deploy Stored Procedures (Table Dependency Safe)
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "DatabaseAdministration/Mastering-SSIS/Resources/SSISDemos/SSISDemos/DeploymentDemo/CreateStoredProcedures.sql" -b
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "SSIS-Project/Scripts/CreateStoredProcedures.sql" -b
         shell: pwsh
