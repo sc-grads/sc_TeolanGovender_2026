@@ -47,11 +47,19 @@ jobs:
 
       - name: 4b. Fix Remote Folder Permissions for SQL Agent Account
         run: |
-          Write-Host "Target Folder: ${{ vars.TIMESHEET_FOLDER_PATH }}"
-          Write-Host "Target Account: ${{ vars.SQL_AGENT_ACCOUNT }}"
+          # Dynamically choose local vs remote values based on target environment input
+          if ("${{ inputs.environment_name }}" -eq "production") {
+              $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
+              $agentAccount = "NT Service\SQLAgent`$MSSQLSERVERDEV"
+          } else {
+              $folderPath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets"
+              $agentAccount = "NT Service\SQLAgent"
+          }
+
+          Write-Host "Target Folder: $folderPath"
+          Write-Host "Target Account: $agentAccount"
           
-          # We use single quotes around the GitHub variable injection to safely handle spaces and special symbols
-          icacls "${{ vars.TIMESHEET_FOLDER_PATH }}" /grant "${{ vars.SQL_AGENT_ACCOUNT }}:(OI)(CI)F" /T
+          icacls "$folderPath" /grant "${agentAccount}:(OI)(CI)F" /T
         shell: pwsh
 
       - name: 5. Locate Visual Studio DevEnv Tool
@@ -79,7 +87,7 @@ jobs:
           
           IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
           BEGIN
-              EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper', @delete_unused_schedule = 1;
+              EXEC msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper', @delete_unused_schedule = 1;
           END
           
           DECLARE @jobId BINARY(16);
@@ -117,14 +125,21 @@ jobs:
 
       - name: 9. Override SSIS Project Parameters for Target Environment
         run: |
-          Write-Host "Overriding Source_File_Directory to use the target environment folder path..."
+          # Determine the correct directory string internally based on target environment
+          if ("${{ inputs.environment_name }}" -eq "production") {
+              $targetPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\"
+          } else {
+              $targetPath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\"
+          }
+          
+          Write-Host "Applying runtime path override: $targetPath"
           
           $overrideQuery = @"
           USE SSISDB;
           UPDATE object_parameters
           SET 
-              design_default_value = N'${{ vars.TIMESHEET_FOLDER_PATH }}\',
-              default_value = N'${{ vars.TIMESHEET_FOLDER_PATH }}\'
+              design_default_value = N'$targetPath',
+              default_value = N'$targetPath'
           FROM catalog.object_parameters object_parameters
           INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
           INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
