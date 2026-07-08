@@ -1,4 +1,4 @@
-name: Reusable Timesheet Deploy
+name: Reusable Timesheet Deploy Template
 
 on:
   workflow_call:
@@ -6,135 +6,93 @@ on:
       database:
         required: true
         type: string
-      runner_label:
+      environment_name:
         required: true
         type: string
     secrets:
       sql_username:
         required: true
+        type: string
       sql_password:
         required: true
+        type: string
 
 jobs:
   deploy:
-    name: Deploy Timesheet Database
-    # This forces GitHub to use the specific person's computer
-    runs-on: ["self-hosted", "${{ inputs.runner_label }}"]
+    name: Execute Remote Deployment Container
+    runs-on: windows-latest
+    environment: ${{ inputs.environment_name }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate Configuration
-        shell: powershell
+      - name: 1. Run Pre-Flight Create Database Script
         run: |
-          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_username }}")) { throw "SQL_USERNAME is not configured" }
-          if ([string]::IsNullOrWhiteSpace("${{ secrets.sql_password }}")) { throw "SQL_PASSWORD is not configured" }
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i "SSIS-Project/Scripts/CreateDatabase.sql" -b
+        shell: pwsh
 
-      - name: 1. Initialize SSISDB Catalog
-        shell: powershell
+      - name: 2. Deploy Database Schema Tables
         run: |
-          # 'localhost' targets the SQL Server running on the runner's actual PC
-          $server = "localhost"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateTables.sql" -b
+        shell: pwsh
 
-          $setupSql = @"
+      - name: 3. Deploy Database Indexes
+        run: |
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateIndexes.sql" -b
+        shell: pwsh
+
+      - name: 4. Deploy Stored Procedures (Table Dependency Safe)
+        run: |
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
+        shell: pwsh
+
+      - name: 5. Locate Visual Studio DevEnv Tool
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+          if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
+          $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
+          echo "DEVENV_PATH=$devenvCom" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+
+      - name: 6. Build SSIS Project to ISPAC via DevEnv
+        run: |
+          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /Rebuild "Development"
+        shell: pwsh
+
+      - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
+        run: |
+          Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
+          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetIntegrationTestTwo.ispac"
+          $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
+          $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
+          
+          $proxyWrapperQuery = @"
           SET NOCOUNT ON;
-          IF (SELECT value_in_use FROM sys.configurations WHERE name = 'clr enabled') = 0
-          BEGIN
-              EXEC sp_configure 'clr enabled', 1;
-              RECONFIGURE;
+          DECLARE @dynamic_tsql NVARCHAR(MAX);
+          SET @dynamic_tsql = N'
+          SET NOCOUNT ON;
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = ''PracticeActivities'') 
+          BEGIN 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = ''PracticeActivities''; 
           END
-
-          IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SSISDB')
-          BEGIN
-              EXEC [master].[dbo].[xp_instance_regwrite] N'HKEY_LOCAL_MACHINE', N'SOFTWARE\Microsoft\MSSQLServer\SSISDB', N'ServerRequiresEncryption', REG_DWORD, 1;
-              DECLARE @catalog_password NVARCHAR(128) = N'Password@123'; 
-              EXEC [catalog].[create_catalog] @password = @catalog_password;
-          END
+          
+          DECLARE @project_binary VARBINARY(MAX) = $hexString;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = ''PracticeActivities'', @project_name = ''TimesheetIntegrationTestTwo'', @project_stream = @project_binary;
+          ';
+          EXEC msdb.dbo.sp_update_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_id = 1, @command = @dynamic_tsql;
+          EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
+          WAITFOR DELAY '00:00:05';
           "@
-          sqlcmd -b -S $server -U $user -P $pass -d "master" -Q $setupSql
+          
+          $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunProxyDeploy.sql"
+          $proxyWrapperQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
+          
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b
+        shell: pwsh
 
-      - name: 2. Run Pre-Flight Database Scripts
-        shell: powershell
+      - name: 8. Provision 30-Second Scheduled Execution Job
         run: |
-          $server = "localhost"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
-          $db     = "${{ inputs.database }}"
-          
-          $sqlFiles = @(
-            "CreateDatabase.sql",
-            "CreateTables.sql",
-            "CreateIndexes.sql",
-            "CreateStoredProcedure.sql"
-          )
-          
-          foreach ($file in $sqlFiles) {
-            $filePath = "SSIS-Project\Scripts\$file"
-            if (Test-Path $filePath) {
-              if ($file -eq "CreateDatabase.sql") {
-                sqlcmd -b -S $server -U $user -P $pass -d "master" -i $filePath
-              } else {
-                sqlcmd -b -S $server -U $user -P $pass -d $db -i $filePath
-              }
-            }
-          }
-
-      - name: 3. Locate/Verify SSIS Project and Deploy ISPAC
-        shell: powershell
-        run: |
-          $server = "localhost"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
-
-          $ispacPath = "$env:GITHUB_WORKSPACE\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
-          
-          $searchPaths = @("C:\Program Files", "C:\Program Files (x86)")
-          $wizardExe = Get-ChildItem -Path $searchPaths -Filter "ISDeploymentWizard.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-
-          if ($null -eq $wizardExe) {
-              throw "ISDeploymentWizard.exe was not found. Please ensure SSIS is installed on this machine."
-          }
-
-          & $wizardExe.FullName `
-              /S `
-              /SourceType:Project `
-              /SourcePath:"$ispacPath" `
-              /DestinationType:SSIS `
-              /DestinationServer:"$server" `
-              /DestinationPath:"/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo" `
-              /AuthType:SQL `
-              /UserName:"$user" `
-              /Password:"$pass"
-
-      - name: 4. Provision Scheduled SQL Agent Job
-        shell: powershell
-        run: |
-          $server = "localhost"
-          $user   = "${{ secrets.sql_username }}"
-          $pass   = "${{ secrets.sql_password }}"
-          $jobScriptPath = "$env:GITHUB_WORKSPACE\provision_job.sql"
-          
-          $provisionJobSql = @"
-          USE [msdb];
-          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'Run_Timesheet_Package')
-              EXEC msdb.dbo.sp_delete_job @job_name = N'Run_Timesheet_Package', @delete_unused_schedule = 1;
-
-          DECLARE @jobId BINARY(16);
-          EXEC msdb.dbo.sp_add_job @job_name = N'Run_Timesheet_Package', @enabled = 1, @job_id = @jobId OUTPUT;
-
-          EXEC msdb.dbo.sp_add_jobstep @job_id = @jobId, @step_name = N'Run Integrated Package Process',
-              @subsystem = N'SSIS',
-              @command = N'/ISSERVER ""\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx"" /SERVER "."',
-              @retry_attempts = 0;
-
-          EXEC msdb.dbo.sp_add_jobschedule @job_id = @jobId, @name = N'Timesheet_30Sec_Interval', @enabled = 1,
-              @freq_type = 4, @freq_interval = 1, @freq_subday_type = 2, @freq_subday_interval = 30;
-
-          EXEC msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)';
-          "@
-
-          Set-Content -Path $jobScriptPath -Value $provisionJobSql -Force
-          sqlcmd -b -S $server -U $user -P $pass -d "msdb" -i $jobScriptPath
+          Write-Host "Piping 30-second interval schedule query over the tunnel..."
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b
+        shell: pwsh

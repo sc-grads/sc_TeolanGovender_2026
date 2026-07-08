@@ -1,50 +1,31 @@
-name: Timesheet Database Deployment
+name: Deploy My SSIS Package To Both PCs
 
 on:
-  workflow_dispatch:
-    inputs:
-      target_pc:
-        description: 'Select Target Machine'
-        required: true
-        default: 'tg-pc'
-        type: choice
-        options:
-          - 'tg-pc'
-          - 'cm-pc'
-          - 'both'
-
   push:
-    paths:
-      - 'SSIS-Project/Timesheets/**'
-      - 'SSIS-Project/Scripts/**'
+    branches:
+      - master
+  workflow_dispatch: # Allows manual pipeline runs directly from the GitHub UI
 
 jobs:
-  set-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      targets: ${{ steps.select.outputs.matrix }}
-    steps:
-      - id: select
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo 'matrix=["tg-pc", "cm-pc"]' >> $GITHUB_OUTPUT
-          else
-            if [ "${{ github.event.inputs.target_pc }}" = "both" ]; then
-              echo 'matrix=["tg-pc", "cm-pc"]' >> $GITHUB_OUTPUT
-            else
-              echo 'matrix=["${{ github.event.inputs.target_pc }}"]' >> $GITHUB_OUTPUT
-            fi
-          fi
-
-  deploy:
-    needs: set-matrix
-    strategy:
-      matrix:
-        target: ${{ fromJson(needs.set-matrix.outputs.targets) }}
+  # Job 1: Run against your local computer via Staging environment
+  deploy-staging:
+    name: Staging Deployment (My PC)
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
       database: TimesheetDb_tg
-      runner_label: runner-${{ matrix.target }}
+      environment_name: staging
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
+
+  # Job 2: Run against her computer via Production environment (Fires ONLY after Staging succeeds)
+  deploy-production:
+    name: Production Deployment (Partner PC)
+    needs: deploy-staging
+    uses: ./.github/workflows/deploy-timesheet-template.yml
+    with:
+      database: TimesheetDb_tg
+      environment_name: production
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
