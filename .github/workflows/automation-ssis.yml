@@ -51,14 +51,14 @@ jobs:
 
       - name: 7. Deploy ISPAC to Partner SSISDB Catalog
         run: |
-          Write-Host "Deploying Compiled ISPAC to remote SSISDB via T-SQL binary stream..."
+          Write-Host "Streaming Compiled ISPAC to temporary SQL file..."
           
-          # We read the compiled ISPAC file straight into a hex stream and deploy it via T-SQL 
-          # to bypass Windows DCOM/RPC network limitations over raw TCP tunnels.
+          # 1. Read the binary artifact
           $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetIntegrationTestTwo.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
+          # 2. Build the query text dynamically
           $deployQuery = @"
           SET NOCOUNT ON;
           IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = 'PracticeActivities') 
@@ -70,6 +70,11 @@ jobs:
           EXEC [SSISDB].[catalog].[deploy_project] @folder_name = 'PracticeActivities', @project_name = 'TimesheetIntegrationTestTwo', @project_stream = @project_binary;
           "@
           
-          # Execute the deployment query straight over the tunnel
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -Q $deployQuery -b
+          # 3. Dump the heavy payload safely into a physical file on the runner disk
+          $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunDeploy.sql"
+          $deployQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
+          
+          Write-Host "Executing deployment payload from input file over the tunnel..."
+          # 4. Use the input file parameter (-i) to completely bypass command-line buffer limits
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -i $tempSqlFile -b
         shell: pwsh
