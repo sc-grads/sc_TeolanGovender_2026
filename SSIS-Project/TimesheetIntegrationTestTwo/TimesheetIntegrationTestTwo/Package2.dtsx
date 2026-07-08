@@ -12,8 +12,8 @@
   DTS:MaxErrorCount="9999"
   DTS:ObjectName="Package2"
   DTS:PackageType="5"
-  DTS:VersionBuild="396"
-  DTS:VersionGUID="{7A844765-D979-4062-85D3-5305424339A8}">
+  DTS:VersionBuild="398"
+  DTS:VersionGUID="{A2008FCD-8C1B-4802-AE4A-60321161FB06}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -91,7 +91,7 @@
           <DTS:Password
             DTS:Name="Password"
             Sensitive="1"
-            Encrypted="1">AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAANlgxqUQplky/wV5YsjJT8AAAAAAIAAAARABUAFMAAAAQZgAAAAEAACAAAADVgVQ/FvAELQhBHOkLOsVQ0uEWYUa0uDEiUibdl8yYzwAAAAAOgAAAAAIAACAAAAD72lzBBMMPx5/nukFeJxn++QvN+ByfuUpjUTj/C1ljtSAAAAA7p1vPo1xQayf+kUIUckCByxnJUVW3YzopfFOcQzRPl0AAAACUAu8aHAGrW0R5cAJ3GMQgwlpQ2aT39Jg8EscGTYVF0LISUv1Fe6D+qm2Kxisp/4y8tz7eis/P4+qz1KdMGijL</DTS:Password>
+            Encrypted="1">AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAANlgxqUQplky/wV5YsjJT8AAAAAAIAAAARABUAFMAAAAQZgAAAAEAACAAAADlEENfeIkkoAWI4deLt27SAIGeBcOO8EG7CjRRW2IzDAAAAAAOgAAAAAIAACAAAADlO2Az5w7LTH8DjWQOON8eYmLRHHoOB/p8gkimGea6NSAAAAApWIGCublJqo1lu+aeHjrPri/6Mq5MUMiSRm2r7gysoUAAAACKS+/9JkElj20KtKyqfjzoOGIbMPRwsDWcPZDw6g32Hfbtq4ZEdoLmDT28N0156UtcWNU1cI5LAYyHH0CYsO+3</DTS:Password>
         </DTS:ConnectionManager>
       </DTS:ObjectData>
     </DTS:ConnectionManager>
@@ -1159,11 +1159,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                 DTS:CreationName="Microsoft.ForEachSchemaRowsetEnumerator"
                 DTS:DTSID="{2DDBA4C5-23A0-4AA9-8E0E-A0419E6BEA5F}"
                 DTS:ObjectName="{2DDBA4C5-23A0-4AA9-8E0E-A0419E6BEA5F}">
-                <DTS:PropertyExpression
-                  DTS:Name="Connection">@[User::FilePath]</DTS:PropertyExpression>
                 <DTS:ObjectData>
                   <FEESchemaRowset
-                    Connection="C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\Teolan\Teolan_Govender_March_FinalWeek.xlsx"
+                    Connection="&quot;C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\Buhle\Buhle_Mukhuba_March_FinalWeek.xlsx&quot;"
                     Schema="c8b52229-5cf3-11ce-ade5-00aa0044773d" />
                 </DTS:ObjectData>
               </DTS:ForEachEnumerator>
@@ -2122,8 +2120,8 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
               <DTS:ForEachVariableMappings>
                 <DTS:ForEachVariableMapping
                   DTS:CreationName=""
-                  DTS:DTSID="{99EF9B80-6524-4B51-A265-2C391BA7D56F}"
-                  DTS:ObjectName="{99EF9B80-6524-4B51-A265-2C391BA7D56F}"
+                  DTS:DTSID="{7A968F76-8738-4C9B-B352-BE88405E41A2}"
+                  DTS:ObjectName="{7A968F76-8738-4C9B-B352-BE88405E41A2}"
                   DTS:ValueIndex="2"
                   DTS:VariableName="User::SheetName" />
               </DTS:ForEachVariableMappings>
@@ -4188,7 +4186,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4210,7 +4210,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4232,7 +4234,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4254,7 +4258,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
