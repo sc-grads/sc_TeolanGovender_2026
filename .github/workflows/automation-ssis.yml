@@ -35,13 +35,18 @@ jobs:
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
         shell: pwsh
 
-      - name: 5. Setup MSBuild path
-        uses: microsoft/setup-msbuild@v2
-
-      - name: 6. Build SSIS Project to ISPAC
+      - name: 5. Locate Visual Studio DevEnv Tool
         run: |
-          # Finds your .dtproj file and builds the binary compilation artifact
-          msbuild "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /p:Configuration=Development /p:PackagePassword="${{ secrets.SQL_PASSWORD }}"
+          # Dynamically finds the pre-installed Visual Studio instance on the cloud runner
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
+          if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
+          $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
+          echo "DEVENV_PATH=$devenvCom" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+
+      - name: 6. Build SSIS Project to ISPAC via DevEnv
+        run: |
+          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /Build "Development"
         shell: pwsh
 
       - name: 7. Deploy ISPAC to Partner SSISDB Catalog
