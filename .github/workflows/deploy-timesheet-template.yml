@@ -11,11 +11,9 @@ on:
         type: string
     secrets:
       sql_username:
-        required: true
-        type: string
+        required: true # ◄ Removed 'type: string'
       sql_password:
-        required: true
-        type: string
+        required: true # ◄ Removed 'type: string'
 
 jobs:
   deploy:

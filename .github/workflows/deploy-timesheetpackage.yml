@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch: # Allows manual pipeline runs directly from the GitHub UI
+  workflow_dispatch:
 
 jobs:
   # Job 1: Run against your local computer via Staging environment
@@ -18,7 +18,7 @@ jobs:
       sql_username: ${{ secrets.SQL_USERNAME }}
       sql_password: ${{ secrets.SQL_PASSWORD }}
 
-  # Job 2: Run against her computer via Production environment (Fires ONLY after Staging succeeds)
+  # Job 2: Run against her computer via Production environment
   deploy-production:
     name: Production Deployment (Partner PC)
     needs: deploy-staging
