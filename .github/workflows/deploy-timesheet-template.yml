@@ -114,3 +114,27 @@ jobs:
           Write-Host "Piping 30-second interval schedule query over the tunnel..."
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b
         shell: pwsh
+
+      - name: 9. Override SSIS Project Parameters for Target Environment
+        run: |
+          Write-Host "Overriding Source_File_Directory to use the target environment folder path..."
+          
+          $overrideQuery = @"
+          USE SSISDB;
+          UPDATE object_parameters
+          SET 
+              design_default_value = N'${{ vars.TIMESHEET_FOLDER_PATH }}\',
+              default_value = N'${{ vars.TIMESHEET_FOLDER_PATH }}\'
+          FROM catalog.object_parameters object_parameters
+          INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
+          INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
+          WHERE f.name = N'PracticeActivities'
+            AND p.name = N'TimesheetIntegrationTestTwo'
+            AND object_parameters.parameter_name = N'Source_File_Directory';
+          "@
+          
+          $tempSqlFile = Join-Path $env:RUNNER_TEMP "OverrideParams.sql"
+          $overrideQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
+          
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b
+        shell: pwsh
