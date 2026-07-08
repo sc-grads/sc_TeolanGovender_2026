@@ -47,8 +47,11 @@ jobs:
 
       - name: 4b. Fix Remote Folder Permissions for SQL Agent Account
         run: |
-          Write-Host "Granting Full Access Inherited Permissions to NT Service\SQLAgent..."
-          icacls "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets" /grant "NT Service\SQLAgent`$MSSQLSERVERDEV:(OI)(CI)F" /T
+          Write-Host "Target Folder: ${{ vars.TIMESHEET_FOLDER_PATH }}"
+          Write-Host "Target Account: ${{ vars.SQL_AGENT_ACCOUNT }}"
+          
+          # We use single quotes around the GitHub variable injection to safely handle spaces and special symbols
+          icacls "${{ vars.TIMESHEET_FOLDER_PATH }}" /grant "${{ vars.SQL_AGENT_ACCOUNT }}:(OI)(CI)F" /T
         shell: pwsh
 
       - name: 5. Locate Visual Studio DevEnv Tool
