@@ -50,10 +50,12 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production detected. Applying folder permission adjustments..."
               $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
-              $agentAccount = "NT Service\SQLAgent`$MSSQLSERVERDEV"
+              
+              # Using the built-in Windows group avoids account name mapping issues completely
+              $agentAccount = "Authenticated Users"
               
               Write-Host "Target Folder: $folderPath"
-              Write-Host "Target Account: $agentAccount"
+              Write-Host "Target Group: $agentAccount"
               
               icacls "$folderPath" /grant "${agentAccount}:(OI)(CI)F" /T
           } else {
