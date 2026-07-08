@@ -11,9 +11,9 @@ on:
         type: string
     secrets:
       sql_username:
-        required: true # ◄ Removed 'type: string'
+        required: true
       sql_password:
-        required: true # ◄ Removed 'type: string'
+        required: true
 
 jobs:
   deploy:
@@ -45,6 +45,12 @@ jobs:
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
         shell: pwsh
 
+      - name: 4b. Fix Remote Folder Permissions for SQL Agent Account
+        run: |
+          Write-Host "Granting Full Access Inherited Permissions to NT Service\SQLAgent..."
+          icacls "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets" /grant "NT Service\SQLAgent`$MSSQLSERVERDEV:(OI)(CI)F" /T
+        shell: pwsh
+
       - name: 5. Locate Visual Studio DevEnv Tool
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
@@ -67,6 +73,15 @@ jobs:
           
           $proxyWrapperQuery = @"
           SET NOCOUNT ON;
+          
+          IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
+          BEGIN
+              EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper', @delete_unused_schedule = 1;
+          END
+          
+          DECLARE @jobId BINARY(16);
+          EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
+          
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
           SET NOCOUNT ON;
@@ -78,7 +93,9 @@ jobs:
           DECLARE @project_binary VARBINARY(MAX) = $hexString;
           EXEC [SSISDB].[catalog].[deploy_project] @folder_name = ''PracticeActivities'', @project_name = ''TimesheetIntegrationTestTwo'', @project_stream = @project_binary;
           ';
-          EXEC msdb.dbo.sp_update_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_id = 1, @command = @dynamic_tsql;
+          
+          EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
+          EXEC msdb.dbo.sp_add_jobserver @job_name = N'GitHub_SSIS_Deploy_Helper', @server_name = N'(local)';
           EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
           WAITFOR DELAY '00:00:05';
           "@
