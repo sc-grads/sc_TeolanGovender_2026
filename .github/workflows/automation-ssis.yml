@@ -90,3 +90,9 @@ jobs:
           Write-Host "Executing cloud proxy handshake over tunnel..."
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -i $tempSqlFile -b
         shell: pwsh
+
+      - name: 8. Provision 30-Second Scheduled Execution Job
+        run: |
+          Write-Host "Piping 30-second interval schedule query over the tunnel..."
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b
+        shell: pwsh
