@@ -34,3 +34,37 @@ jobs:
         run: |
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -d TimesheetDb_tg -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
         shell: pwsh
+
+      - name: 5. Setup MSBuild path
+        uses: microsoft/setup-msbuild@v2
+
+      - name: 6. Build SSIS Project to ISPAC
+        run: |
+          # Finds your .dtproj file and builds the binary compilation artifact
+          msbuild "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /p:Configuration=Development /p:PackagePassword="${{ secrets.SQL_PASSWORD }}"
+        shell: pwsh
+
+      - name: 7. Deploy ISPAC to Partner SSISDB Catalog
+        run: |
+          Write-Host "Deploying Compiled ISPAC to remote SSISDB via T-SQL binary stream..."
+          
+          # We read the compiled ISPAC file straight into a hex stream and deploy it via T-SQL 
+          # to bypass Windows DCOM/RPC network limitations over raw TCP tunnels.
+          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetIntegrationTestTwo.ispac"
+          $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
+          $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
+          
+          $deployQuery = @"
+          SET NOCOUNT ON;
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = 'PracticeActivities') 
+          BEGIN 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = 'PracticeActivities'; 
+          END
+          
+          DECLARE @project_binary VARBINARY(MAX) = $hexString;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = 'PracticeActivities', @project_name = 'TimesheetIntegrationTestTwo', @project_stream = @project_binary;
+          "@
+          
+          # Execute the deployment query straight over the tunnel
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -Q $deployQuery -b
+        shell: pwsh
