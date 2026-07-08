@@ -49,32 +49,13 @@ jobs:
           & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /Build "Development"
         shell: pwsh
 
-      - name: 7. Deploy ISPAC to Partner SSISDB Catalog
+      - name: 7. Deploy ISPAC via Silent Deployment Wizard
         run: |
-          Write-Host "Streaming Compiled ISPAC to temporary SQL file..."
+          Write-Host "Deploying ISPAC using silent deployment wizard..."
           
-          # 1. Read the binary artifact
-          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetIntegrationTestTwo.ispac"
-          $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
-          $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
+          $ispacPath = "D:\a\sc_TeolanGovender_2026\sc_TeolanGovender_2026\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetIntegrationTestTwo.ispac"
           
-          # 2. Build the query text dynamically
-          $deployQuery = @"
-          SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = 'PracticeActivities') 
-          BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = 'PracticeActivities'; 
-          END
-          
-          DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = 'PracticeActivities', @project_name = 'TimesheetIntegrationTestTwo', @project_stream = @project_binary;
-          "@
-          
-          # 3. Dump the heavy payload safely into a physical file on the runner disk
-          $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunDeploy.sql"
-          $deployQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
-          
-          Write-Host "Executing deployment payload from input file over the tunnel..."
-          # 4. Use the input file parameter (-i) to completely bypass command-line buffer limits
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.SQL_USERNAME }}" -P "${{ secrets.SQL_PASSWORD }}" -i $tempSqlFile -b
+          # Use the native SQL Server Deployment Wizard via command-line arguments
+          # /Silent ensures no GUI pops up on the cloud runner
+          & "C:\Program Files (x86)\Microsoft SQL Server\150\DTS\Binn\ISDeploymentWizard.exe" /Silent /SourcePath:$ispacPath /DestinationServer:"${{ vars.SQL_SERVER }}" /DestinationPath:"/SSISDB/PracticeActivities/TimesheetIntegrationTestTwo" /AuthenticationMethod:SqlAuthentication /User:"${{ secrets.SQL_USERNAME }}" /Password:"${{ secrets.SQL_PASSWORD }}"
         shell: pwsh
