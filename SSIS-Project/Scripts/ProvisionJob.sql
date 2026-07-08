@@ -18,8 +18,8 @@ EXEC msdb.dbo.sp_add_job
     @enabled = 1, 
     @job_id = @jobId OUTPUT;
 
--- 3. Add Execution Step Target explicitly pointing at Package2.dtsx
-DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "." /EnforceObjectType';
+-- 3. Add Execution Step Target explicitly pointing at Package2.dtsx (Cleaned Syntax)
+DECLARE @ssisCommand NVARCHAR(4000) = N'/ISSERVER "\"\SSISDB\PracticeActivities\TimesheetIntegrationTestTwo\Package2.dtsx\"" /SERVER "."';
 
 EXEC msdb.dbo.sp_add_jobstep 
     @job_id = @jobId, 
