@@ -49,15 +49,19 @@ jobs:
         run: |
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production detected. Applying folder permission adjustments..."
-              
-              # Point directly to the folder path string
               $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
-              $agentAccount = "Authenticated Users"
               
+              # 1. Force the directory structure to exist on the runner machine
+              if (-not (Test-Path -Path $folderPath)) {
+                  Write-Host "Folder structure missing on the runner. Creating directory path..."
+                  New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
+              }
+              
+              $agentAccount = "Authenticated Users"
               Write-Host "Target Folder: $folderPath"
               Write-Host "Target Group: $agentAccount"
               
-              # Adding `\*` forces icacls to explicitly resolve the target contents cleanly
+              # 2. Run icacls safely now that the path is guaranteed to exist
               icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
           } else {
               Write-Host "Staging environment detected. Skipping local folder permission modifications."
