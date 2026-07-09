@@ -105,18 +105,18 @@ jobs:
           EXEC msdb.dbo.sp_add_jobserver @job_name = N'GitHub_SSIS_Deploy_Helper', @server_name = N'(local)';
           EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
 
-          -- FIXED: Actively wait until the helper job finishes processing the binary stream
-          DECLARE @job_status INT = 1;
-          WHILE (@job_status <> 0)
+          -- FIXED: Wait until a history log entry appears, proving the job completed its run
+          DECLARE @job_finished INT = 0;
+          WHILE (@job_finished = 0)
           BEGIN
               WAITFOR DELAY '00:00:02';
-              SELECT TOP 1 @job_status = current_execution_status
-              FROM msdb.dbo.sysjobactivity
-              WHERE job_id = @jobId
-              ORDER BY session_id DESC;
-          END
+              IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobhistory WHERE job_id = @jobId AND step_id = 0)
+              BEGIN
+                  SET @job_finished = 1;
+              END;
+          END;
 
-          -- CLEANUP: Wipe out the helper job immediately so it never shows up in SSMS!
+          -- CLEANUP: Wipe out the helper job out of existence completely
           EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper';
           "@
           
