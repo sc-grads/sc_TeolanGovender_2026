@@ -12,10 +12,8 @@ on:
     secrets:
       sql_username:
         required: true
-        type: string
       sql_password:
         required: true
-        type: string
 
 jobs:
   deploy:
