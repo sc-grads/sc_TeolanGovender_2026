@@ -45,22 +45,15 @@ jobs:
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
         shell: pwsh
 
-      - name: 4b. Fix Remote Folder Permissions for SQL Agent Account (Production Only)
+      - name: 4b. Fix Remote Folder Permissions for SQL Agent Account
         run: |
-          if ("${{ inputs.environment_name }}" -eq "production") {
-              Write-Host "Production detected. Applying folder permission adjustments..."
-              $folderPath = "C:\Timesheets"
-              
-              if (-not (Test-Path -Path $folderPath)) {
-                  Write-Host "Folder structure missing on the runner. Creating directory path..."
-                  New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
-              }
-              
-              $agentAccount = "Authenticated Users"
-              icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
-          } else {
-              Write-Host "Staging environment detected. Skipping local folder permission modifications."
+          Write-Host "Applying unified folder root and permissions..."
+          $folderPath = "C:\Timesheets"
+          if (-not (Test-Path -Path $folderPath)) {
+              New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
           }
+          $agentAccount = "Authenticated Users"
+          icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
         shell: pwsh
 
       - name: 5. Locate Visual Studio DevEnv Tool
@@ -85,7 +78,6 @@ jobs:
           
           $proxyWrapperQuery = @"
           SET NOCOUNT ON;
-          
           IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
           BEGIN
               EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper', @delete_unused_schedule = 1;
@@ -94,8 +86,8 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
-          DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigration' || 'TimesheetDevTestMigration' }}';
-          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetMigrationTwo' || 'TimesheetDevTestMigrationTG' }}';
+          DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
+          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
 
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
@@ -125,48 +117,15 @@ jobs:
         run: |
           if ("${{ inputs.environment_name }}" -eq "production") {
               $jobName = "RunTimesheetProductionMigrationTG"
-              $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetMigrationTwo"
+              $catalogFolder = "TimesheetProductionMigrationTG"
+              $projectName = "TimesheetProductionMigrationTG"
           } else {
-              $jobName = "RunTimesheetDevTestMigrationTG"
-              $catalogFolder = "TimesheetDevTestMigration"
+              $jobName = "RunTimesheetDevTestMigration"
+              $catalogFolder = "TimesheetDevTestMigrationTG"
               $projectName = "TimesheetDevTestMigrationTG"
           }
 
           Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"
 
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b -v TARGET_JOB_NAME="$jobName" CATALOG_FOLDER="$catalogFolder" PROJECT_NAME="$projectName"
-        shell: pwsh
-
-      - name: 9. Override SSIS Project Parameters for Target Environment
-        run: |
-          $targetPath = "C:\Timesheets\"
-          if ("${{ inputs.environment_name }}" -eq "production") {
-              $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetMigrationTwo"
-          } else {
-              $catalogFolder = "TimesheetDevTestMigration"
-              $projectName = "TimesheetDevTestMigrationTG"
-          }
-          
-          Write-Host "Applying runtime path override to folder ${catalogFolder}: ${targetPath}"
-          
-          $overrideQuery = @"
-          USE SSISDB;
-          UPDATE object_parameters
-          SET 
-              design_default_value = N'$targetPath',
-              default_value = N'$targetPath'
-          FROM catalog.object_parameters object_parameters
-          INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
-          INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
-          WHERE f.name = N'$catalogFolder'
-            AND p.name = N'$projectName'
-            AND object_parameters.parameter_name = N'RootFolder';
-          "@
-          
-          $tempSqlFile = Join-Path $env:RUNNER_TEMP "OverrideParams.sql"
-          $overrideQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
-          
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b
         shell: pwsh
