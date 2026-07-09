@@ -51,7 +51,6 @@ jobs:
               Write-Host "Production detected. Applying folder permission adjustments..."
               $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
               
-              # 1. Force the directory structure to exist on the runner machine
               if (-not (Test-Path -Path $folderPath)) {
                   Write-Host "Folder structure missing on the runner. Creating directory path..."
                   New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
@@ -61,7 +60,6 @@ jobs:
               Write-Host "Target Folder: $folderPath"
               Write-Host "Target Group: $agentAccount"
               
-              # 2. Run icacls safely now that the path is guaranteed to exist
               icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
           } else {
               Write-Host "Staging environment detected. Skipping local folder permission modifications."
@@ -78,13 +76,15 @@ jobs:
 
       - name: 6. Build SSIS Project to ISPAC via DevEnv
         run: |
-          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo.dtproj" /Rebuild "Development"
+          # Updated to compile the newly renamed project layout file
+          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationPK.dtproj" /Rebuild "Development"
         shell: pwsh
 
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
         run: |
           Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetIntegrationTestTwo.ispac"
+          # Targeted to read the newly compiled deployment package file sequence
+          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationPK.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
@@ -99,16 +99,19 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
+          DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigration' || 'TimesheetDevTestMigration' }}';
+          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationPK' || 'TimesheetDevTestMigrationPK' }}';
+
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
           SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = ''PracticeActivities'') 
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = ''' + @catalogFolder + ''') 
           BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = ''PracticeActivities''; 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = ''' + @catalogFolder + '''; 
           END
           
           DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = ''PracticeActivities'', @project_name = ''TimesheetIntegrationTestTwo'', @project_stream = @project_binary;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = ''' + @catalogFolder + ''', @project_name = ''' + @projectName + ''', @project_stream = @project_binary;
           ';
           
           EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
@@ -137,20 +140,22 @@ jobs:
 
           Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"
 
-          # Removed TARGET_FILE_PATH entirely to fix the sqlcmd parsing error
           sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b -v TARGET_JOB_NAME="$jobName" CATALOG_FOLDER="$catalogFolder" PROJECT_NAME="$projectName"
         shell: pwsh
 
       - name: 9. Override SSIS Project Parameters for Target Environment
         run: |
-          # Determine the correct directory string internally based on target environment
           if ("${{ inputs.environment_name }}" -eq "production") {
               $targetPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\"
+              $catalogFolder = "TimesheetProductionMigration"
+              $projectName = "TimesheetProductionMigrationPK"
           } else {
               $targetPath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\"
+              $catalogFolder = "TimesheetDevTestMigration"
+              $projectName = "TimesheetDevTestMigrationPK"
           }
           
-          Write-Host "Applying runtime path override: $targetPath"
+          Write-Host "Applying runtime path override to $catalogFolder -> $projectName: $targetPath"
           
           $overrideQuery = @"
           USE SSISDB;
@@ -161,8 +166,8 @@ jobs:
           FROM catalog.object_parameters object_parameters
           INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
           INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
-          WHERE f.name = N'PracticeActivities'
-            AND p.name = N'TimesheetIntegrationTestTwo'
+          WHERE f.name = N'$catalogFolder'
+            AND p.name = N'$projectName'
             AND object_parameters.parameter_name = N'Source_File_Directory';
           "@
           
