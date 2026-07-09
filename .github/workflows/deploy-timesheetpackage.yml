@@ -9,10 +9,10 @@ on:
 jobs:
   # Job 1: Run against your local computer via Staging environment
   deploy-staging:
-    name: Staging Deployment (My PC)
+    name: SDevTest/Deploy
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
-      database: TimesheetDb_tg
+      database: TimesheetTGDB
       environment_name: staging
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}
@@ -20,11 +20,11 @@ jobs:
 
   # Job 2: Run against her computer via Production environment
   deploy-production:
-    name: Production Deployment (Partner PC)
+    name: Production/Deploy
     needs: deploy-staging
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
-      database: TimesheetDb_tg
+      database: TimesheetTGDB
       environment_name: production
     secrets:
       sql_username: ${{ secrets.SQL_USERNAME }}

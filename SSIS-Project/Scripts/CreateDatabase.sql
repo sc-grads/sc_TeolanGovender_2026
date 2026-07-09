@@ -1,10 +1,10 @@
 USE master;
 GO
 
-IF DB_ID('TimesheetDb_tg') IS NULL
+IF DB_ID('TimesheetTGDB') IS NULL
 BEGIN
-    CREATE DATABASE TimesheetDb_tg;
+    CREATE DATABASE TimesheetTGDB;
 
-    ALTER DATABASE TimesheetDb_tg SET MULTI_USER; 
+    ALTER DATABASE TimesheetTGDB SET MULTI_USER; 
 END
 GO

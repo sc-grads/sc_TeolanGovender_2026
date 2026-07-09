@@ -1,4 +1,4 @@
-USE TimesheetDb_tg
+USE TimesheetTGDB
 
 SELECT * FROM dbo.Timesheet
 SELECT * FROM Consultant

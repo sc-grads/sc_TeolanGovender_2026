@@ -1,4 +1,4 @@
-USE TimesheetDb_tg;
+USE TimesheetTGDB;
 GO
 
 -- 1. DEPLOY STAGING TRUNCATION ENGINE
