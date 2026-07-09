@@ -17,7 +17,7 @@ on:
 
 jobs:
   deploy:
-    name: Execute Remote Deployment Container
+    name: Deploy
     runs-on: windows-latest
     environment: ${{ inputs.environment_name }}
 
@@ -125,17 +125,17 @@ jobs:
 
       - name: 8. Provision 30-Second Scheduled Execution Job
         run: |
-          # Set explicit naming convention variables based on the target environment name
+          # Doubling the final trailing slash stops sqlcmd from escaping the string brackets
           if ("${{ inputs.environment_name }}" -eq "production") {
               $jobName = "RunTimesheetProductionMigrationPK"
               $catalogFolder = "TimesheetProductionMigration"
               $projectName = "TimesheetProductionMigrationPK"
-              $filePath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\"
+              $filePath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\\"
           } else {
               $jobName = "RunTimesheetDevTestMigrationPK"
               $catalogFolder = "TimesheetDevTestMigration"
               $projectName = "TimesheetDevTestMigrationPK"
-              $filePath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\"
+              $filePath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\\"
           }
 
           Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"

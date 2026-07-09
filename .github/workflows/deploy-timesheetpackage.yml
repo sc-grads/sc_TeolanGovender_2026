@@ -9,7 +9,7 @@ on:
 jobs:
   # Job 1: Run against your local computer via Staging environment
   deploy-staging:
-    name: SDevTest/Deploy
+    name: DevTest
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
       database: TimesheetTGDB
@@ -20,7 +20,7 @@ jobs:
 
   # Job 2: Run against her computer via Production environment
   deploy-production:
-    name: Production/Deploy
+    name: Production
     needs: deploy-staging
     uses: ./.github/workflows/deploy-timesheet-template.yml
     with:
