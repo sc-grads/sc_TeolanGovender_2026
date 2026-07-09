@@ -143,15 +143,14 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               $targetPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\"
               $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetProductionMigrationPK"
           } else {
               $targetPath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\"
               $catalogFolder = "TimesheetDevTestMigration"
-              $projectName = "TimesheetDevTestMigrationPK"
           }
           
-          Write-Host "Applying runtime path override to ${catalogFolder} -> ${projectName} using path ${targetPath}"
+          Write-Host "Applying runtime path override to folder ${catalogFolder}: ${targetPath}"
           
+          # This query now dynamically targets whatever project name is sitting inside the folder
           $overrideQuery = @"
           USE SSISDB;
           UPDATE object_parameters
@@ -162,7 +161,6 @@ jobs:
           INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
           INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
           WHERE f.name = N'$catalogFolder'
-            AND p.name = N'$projectName'
             AND object_parameters.parameter_name = N'Source_File_Directory';
           "@
           
