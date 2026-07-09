@@ -29,7 +29,6 @@ DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
     WHERE f.name = N''$(CATALOG_FOLDER)'';
 
-    -- Fallback project name safety rule if folder query is blank
     IF @resolved_project_name IS NULL
     BEGIN
         SET @resolved_project_name = N''$(PROJECT_NAME)'';

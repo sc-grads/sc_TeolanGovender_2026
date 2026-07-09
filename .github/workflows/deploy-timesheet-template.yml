@@ -73,14 +73,12 @@ jobs:
 
       - name: 6. Build SSIS Project to ISPAC via DevEnv
         run: |
-          # Reverted path back to SSIS-Project while pointing to the renamed .dtproj
           & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationPK.dtproj" /Rebuild "Development"
         shell: pwsh
 
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
         run: |
           Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          # Reverted path back to SSIS-Project base directory
           $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationPK.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
