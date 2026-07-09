@@ -12,8 +12,10 @@ on:
     secrets:
       sql_username:
         required: true
+        type: string
       sql_password:
         required: true
+        type: string
 
 jobs:
   deploy:
@@ -73,13 +75,14 @@ jobs:
 
       - name: 6. Build SSIS Project to ISPAC via DevEnv
         run: |
-          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationTG.dtproj" /Rebuild "Development"
+          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetDevTestMigrationTG\TimesheetDevTestMigrationTG.dtproj" /Rebuild "Development"
         shell: pwsh
 
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
         run: |
           Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationTG.ispac"
+          # FIXED: Path updated to the active project folder
+          $ispacPath = "SSIS-Project/TimesheetDevTestMigrationTG/bin/Development/TimesheetDevTestMigrationTG.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
@@ -118,7 +121,8 @@ jobs:
           $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunProxyDeploy.sql"
           $proxyWrapperQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
           
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b
+          # FIXED: Added the -C flag to bypass prelogin handshake / certificate strictness drops
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b -C
         shell: pwsh
 
       - name: 8. Provision 30-Second Scheduled Execution Job
