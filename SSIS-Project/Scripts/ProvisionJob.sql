@@ -2,7 +2,7 @@ USE [msdb];
 GO
 SET NOCOUNT ON;
 
--- 1. Clear Out Stale Existing Job Definitions
+-- 1. Clear Out Stale Existing Job Definitions for THIS specific pipeline job only
 IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$(TARGET_JOB_NAME)')
 BEGIN
     EXEC msdb.dbo.sp_delete_job @job_name = N'$(TARGET_JOB_NAME)', @delete_unused_schedule = 1;
@@ -16,44 +16,58 @@ EXEC msdb.dbo.sp_add_job
     @enabled = 1, 
     @job_id = @jobId OUTPUT;
 
--- 3. Prepare the Diagnostic T-SQL Payload
+-- 3. Prepare the T-SQL Execution Payload
 DECLARE @tsqlCommand NVARCHAR(MAX) = N'
+    DECLARE @execution_id BIGINT;
     DECLARE @resolved_path NVARCHAR(255);
     DECLARE @resolved_package_name NVARCHAR(255);
-    DECLARE @resolved_project_name NVARCHAR(255);
 
-    -- Diagnostic 1: Grab project name
-    SELECT TOP 1 @resolved_project_name = p.name
-    FROM [SSISDB].[catalog].[projects] p
-    INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-    WHERE f.name = N''$(CATALOG_FOLDER)'';
-
-    -- Diagnostic 2: Grab path parameter 
+    -- 1. Strictly target the parameter path of YOUR deployed project name only
     SELECT TOP 1 @resolved_path = CONVERT(NVARCHAR(255), op.design_default_value)
     FROM [SSISDB].[catalog].[object_parameters] op
     INNER JOIN [SSISDB].[catalog].[projects] p ON op.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
     WHERE f.name = N''$(CATALOG_FOLDER)''
+      AND p.name = N''$(PROJECT_NAME)'' -- Isolates query to your project context
       AND op.parameter_name = N''Source_File_Directory'';
 
-    -- Diagnostic 3: Grab package filename
+    -- 2. Strictly target the package filename compiled inside YOUR project context
     SELECT TOP 1 @resolved_package_name = pkg.name
     FROM [SSISDB].[catalog].[packages] pkg
     INNER JOIN [SSISDB].[catalog].[projects] p ON pkg.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-    WHERE f.name = N''$(CATALOG_FOLDER)'';
+    WHERE f.name = N''$(CATALOG_FOLDER)''
+      AND p.name = N''$(PROJECT_NAME)'';
 
-    -- Force an explicit error message displaying what was discovered
-    DECLARE @ErrorMessage NVARCHAR(MAX);
-    SET @ErrorMessage = CHAR(13) + CHAR(10) + 
-                        N''=== SSIS EXECUTOR DIAGNOSTICS ==='' + CHAR(13) + CHAR(10) +
-                        N''Target Folder:  [$(CATALOG_FOLDER)]'' + CHAR(13) + CHAR(10) +
-                        N''Found Project:  ['' + ISNULL(@resolved_project_name, ''NULL'') + '']'' + CHAR(13) + CHAR(10) +
-                        N''Found Package:  ['' + ISNULL(@resolved_package_name, ''NULL'') + '']'' + CHAR(13) + CHAR(10) +
-                        N''Found FilePath: ['' + ISNULL(@resolved_path, ''NULL'') + '']'' + CHAR(13) + CHAR(10) +
-                        N''==============================='';
-    
-    RAISERROR(@ErrorMessage, 16, 1);
+    -- Fallback safety check if metadata query returns blank
+    IF @resolved_package_name IS NULL
+    BEGIN
+        IF N''$(CATALOG_FOLDER)'' = N''TimesheetProductionMigration''
+            SET @resolved_package_name = N''TimesheetProductionMigrationPK.dtsx'';
+        ELSE
+            SET @resolved_package_name = N''TimesheetDevTestMigrationPK.dtsx'';
+    END
+        
+    -- 3. Create the execution instance pointing explicitly to your pipeline asset layer
+    EXEC [SSISDB].[catalog].[create_execution] 
+        @folder_name = N''$(CATALOG_FOLDER)'', 
+        @project_name = N''$(PROJECT_NAME)'', 
+        @package_name = @resolved_package_name, 
+        @reference_id = NULL, 
+        @use32bitruntime = FALSE, 
+        @execution_id = @execution_id OUTPUT;
+        
+    -- 4. Apply the path parameter cleanly to the isolated execution context
+    BEGIN TRY
+        EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
+            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = @resolved_path;
+    END TRY
+    BEGIN CATCH
+        EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
+            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = @resolved_path;
+    END CATCH;
+        
+    EXEC [SSISDB].[catalog].[start_execution] @execution_id;
 ';
 
 EXEC msdb.dbo.sp_add_jobstep         
@@ -63,6 +77,17 @@ EXEC msdb.dbo.sp_add_jobstep
     @database_name = N'master',
     @command = @tsqlCommand,
     @retry_attempts = 0;
+
+-- 4. Bind the 30-Second Schedule
+EXEC msdb.dbo.sp_add_jobschedule         
+    @job_id = @jobId, 
+    @name = N'Timesheet_30Sec_Interval',
+    @enabled = 1,
+    @freq_type = 4,
+    @freq_interval = 1,
+    @freq_subday_type = 2,
+    @freq_subday_interval = 30,
+    @active_start_time = 000000;
 
 -- 5. Attach to Target Server Context
 EXEC msdb.dbo.sp_add_jobserver         
