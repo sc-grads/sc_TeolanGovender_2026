@@ -22,17 +22,14 @@ DECLARE @realPackageName NVARCHAR(100);
 SELECT TOP 1 @realPackageName = pk.name
 FROM SSISDB.catalog.packages pk
 INNER JOIN SSISDB.catalog.projects p ON pk.project_id = p.project_id
-INNER JOIN SSISDB.catalog.folders f ON p.folder_id = f.folder_id
+INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
 WHERE f.name = N'$(CATALOG_FOLDER)' 
   AND p.name = N'$(PROJECT_NAME)';
 
--- Safe structural fallback if the metadata query hasn't refreshed in memory yet
+-- FIXED: Aligning the fallback guess to match your project compilation name
 IF @realPackageName IS NULL
 BEGIN
-    SET @realPackageName = CASE 
-        WHEN N'$(CATALOG_FOLDER)' LIKE '%Production%' THEN N'TimesheetProductionMigrationPK.dtsx'
-        ELSE N'TimesheetDevTestMigrationTG.dtsx'
-    END;
+    SET @realPackageName = N'TimesheetDevTestMigrationTG.dtsx';
 END;
 
 -- 4. Determine target runtime database environment isolation context
@@ -41,14 +38,13 @@ DECLARE @targetDatabase NVARCHAR(100) = CASE
     ELSE N'TimesheetDB'
 END;
 
--- 5. Construct the perfect native DTExec execution payload string
+-- 5. Construct the native DTExec execution payload string
 DECLARE @serverName NVARCHAR(100) = @@SERVERNAME;
 DECLARE @ssisCommand NVARCHAR(MAX);
 
 SET @ssisCommand = N'/ISSERVER "\"\SSISDB\$(CATALOG_FOLDER)\$(PROJECT_NAME)\' + @realPackageName + N'\"" /SERVER "\"' + @serverName + N'\"" ' +
                    N'/CALLERINFO SQLAGENT /REPORTING E ' +
                    N'/PARAMETER "\"$ServerOption::SYNCHRONIZED(Boolean)\"";True ' +
-                   -- Dynamic Environment Connection Intercept Overrides
                    N'/CONNECTION "\"LocalHost.TimesheetDB\"";"\"Data Source=' + @serverName + N';Initial Catalog=' + @targetDatabase + N';Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;\"" ' +
                    N'/CONNECTION "\"LocalHost.TimesheetCMDB\"";"\"Data Source=' + @serverName + N';Initial Catalog=' + @targetDatabase + N';Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;\""';
 
