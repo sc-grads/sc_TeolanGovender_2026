@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  Job 1: Run against your local computer via Staging environment
+  #Job 1: Run against your local computer via Staging environment
   deploy-staging:
     name: DevTest
     uses: ./.github/workflows/deploy-timesheet-template.yml
