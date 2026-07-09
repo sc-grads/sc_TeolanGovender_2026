@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Job 1: Run against your local computer via Staging environment
-  #deploy-staging:
-    #name: DevTest
-    #uses: ./.github/workflows/deploy-timesheet-template.yml
-    #with:
-      #database: TimesheetTGDB
-      #environment_name: staging
-    #secrets:
-      #sql_username: ${{ secrets.SQL_USERNAME }}
-      #sql_password: ${{ secrets.SQL_PASSWORD }}
+  Job 1: Run against your local computer via Staging environment
+  deploy-staging:
+    name: DevTest
+    uses: ./.github/workflows/deploy-timesheet-template.yml
+    with:
+      database: TimesheetTGDB
+      environment_name: staging
+    secrets:
+      sql_username: ${{ secrets.SQL_USERNAME }}
+      sql_password: ${{ secrets.SQL_PASSWORD }}
 
   # Job 2: Run against her computer via Production environment
   deploy-production:
