@@ -104,7 +104,20 @@ jobs:
           EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
           EXEC msdb.dbo.sp_add_jobserver @job_name = N'GitHub_SSIS_Deploy_Helper', @server_name = N'(local)';
           EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
-          WAITFOR DELAY '00:00:05';
+
+          -- FIXED: Actively wait until the helper job finishes processing the binary stream
+          DECLARE @job_status INT = 1;
+          WHILE (@job_status <> 0)
+          BEGIN
+              WAITFOR DELAY '00:00:02';
+              SELECT TOP 1 @job_status = current_execution_status
+              FROM msdb.dbo.sysjobactivity
+              WHERE job_id = @jobId
+              ORDER BY session_id DESC;
+          END
+
+          -- CLEANUP: Wipe out the helper job immediately so it never shows up in SSMS!
+          EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper';
           "@
           
           $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunProxyDeploy.sql"

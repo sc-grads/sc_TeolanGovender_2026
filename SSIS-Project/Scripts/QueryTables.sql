@@ -21,4 +21,3 @@ inner JOIN dbo.Consultant c
     ON l.ConsultantID = c.ConsultantID
 --WHERE c.FirstName IN ('Teolan')
 --ORDER BY c.FirstName, l.[LeaveID];
-
