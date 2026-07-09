@@ -17,13 +17,13 @@ EXEC msdb.dbo.sp_add_job
     @job_id = @jobId OUTPUT;
 
 -- 3. Prepare the T-SQL Execution Payload
--- We dynamically fetch the path directly from SSISDB parameter metadata at runtime!
+-- Explicitly CONVERT the sql_variant to NVARCHAR to pass the engine type check safely
 DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     DECLARE @execution_id BIGINT;
     DECLARE @resolved_path NVARCHAR(255);
 
-    -- Grab the path parameter that Step 9 successfully updated
-    SELECT TOP 1 @resolved_path = design_default_value
+    -- Added CONVERT to enforce the correct string type string mapping
+    SELECT TOP 1 @resolved_path = CONVERT(NVARCHAR(255), op.design_default_value)
     FROM [SSISDB].[catalog].[object_parameters] op
     INNER JOIN [SSISDB].[catalog].[projects] p ON op.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
