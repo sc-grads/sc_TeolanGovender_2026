@@ -21,40 +21,55 @@ DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     DECLARE @execution_id BIGINT;
     DECLARE @resolved_path NVARCHAR(255);
     DECLARE @resolved_package_name NVARCHAR(255);
+    DECLARE @resolved_project_name NVARCHAR(255);
 
-    -- 1. Grab the path parameter that Step 9 successfully updated
+    -- 1. Dynamically grab the project name that actually exists inside this folder context
+    SELECT TOP 1 @resolved_project_name = p.name
+    FROM [SSISDB].[catalog].[projects] p
+    INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
+    WHERE f.name = N''$(CATALOG_FOLDER)'';
+
+    -- Fallback project name safety rule if folder query is blank
+    IF @resolved_project_name IS NULL
+    BEGIN
+        SET @resolved_project_name = N''$(PROJECT_NAME)'';
+    END
+
+    -- 2. Grab the path parameter that Step 9 successfully updated using the resolved project
     SELECT TOP 1 @resolved_path = CONVERT(NVARCHAR(255), op.design_default_value)
     FROM [SSISDB].[catalog].[object_parameters] op
     INNER JOIN [SSISDB].[catalog].[projects] p ON op.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
     WHERE f.name = N''$(CATALOG_FOLDER)''
-      AND p.name = N''$(PROJECT_NAME)''
+      AND p.name = @resolved_project_name
       AND op.parameter_name = N''Source_File_Directory'';
 
-    -- 2. Dynamically grab the exact package filename compiled inside the project catalog
+    -- 3. Dynamically grab the package filename using ONLY the catalog folder name context
     SELECT TOP 1 @resolved_package_name = pkg.name
     FROM [SSISDB].[catalog].[packages] pkg
     INNER JOIN [SSISDB].[catalog].[projects] p ON pkg.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-    WHERE f.name = N''$(CATALOG_FOLDER)''
-      AND p.name = N''$(PROJECT_NAME)'';
+    WHERE f.name = N''$(CATALOG_FOLDER)'';
 
-    -- Fallback safety check if metadata query returns blank
+    -- 4. Fallback environment-aware safety check if metadata query returns blank
     IF @resolved_package_name IS NULL
     BEGIN
-        SET @resolved_package_name = N''TimesheetDevTestMigrationPK.dtsx'';
+        IF N''$(CATALOG_FOLDER)'' = N''TimesheetProductionMigration''
+            SET @resolved_package_name = N''TimesheetProductionMigrationPK.dtsx'';
+        ELSE
+            SET @resolved_package_name = N''TimesheetDevTestMigrationPK.dtsx'';
     END
         
-    -- 3. Create the execution instance in the SSIS catalog using the dynamic matching name
+    -- 5. Create the execution instance in the SSIS catalog using the fully resolved name values
     EXEC [SSISDB].[catalog].[create_execution] 
         @folder_name = N''$(CATALOG_FOLDER)'', 
-        @project_name = N''$(PROJECT_NAME)'', 
+        @project_name = @resolved_project_name, 
         @package_name = @resolved_package_name, 
         @reference_id = NULL, 
         @use32bitruntime = FALSE, 
         @execution_id = @execution_id OUTPUT;
         
-    -- 4. Dynamically apply the fetched path parameter to the execution run
+    -- 6. Dynamically apply the fetched path parameter to the execution run
     BEGIN TRY
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
             @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = @resolved_path;
