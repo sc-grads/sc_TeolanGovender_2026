@@ -73,13 +73,13 @@ jobs:
 
       - name: 6. Build SSIS Project to ISPAC via DevEnv
         run: |
-          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationPK.dtproj" /Rebuild "Development"
+          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationTG.dtproj" /Rebuild "Development"
         shell: pwsh
 
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
         run: |
           Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationPK.ispac"
+          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationTG.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
@@ -95,7 +95,7 @@ jobs:
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
           DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigration' || 'TimesheetDevTestMigration' }}';
-          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationPK' || 'TimesheetDevTestMigrationPK' }}';
+          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
 
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
@@ -124,13 +124,13 @@ jobs:
       - name: 8. Provision 30-Second Scheduled Execution Job
         run: |
           if ("${{ inputs.environment_name }}" -eq "production") {
-              $jobName = "RunTimesheetProductionMigrationPK"
+              $jobName = "RunTimesheetProductionMigrationTG"
               $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetProductionMigrationPK"
+              $projectName = "TimesheetProductionMigrationTG"
           } else {
-              $jobName = "RunTimesheetDevTestMigrationPK"
+              $jobName = "RunTimesheetDevTestMigrationTG"
               $catalogFolder = "TimesheetDevTestMigration"
-              $projectName = "TimesheetDevTestMigrationPK"
+              $projectName = "TimesheetDevTestMigrationTG"
           }
 
           Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"
@@ -150,7 +150,6 @@ jobs:
           
           Write-Host "Applying runtime path override to folder ${catalogFolder}: ${targetPath}"
           
-          # This query now dynamically targets whatever project name is sitting inside the folder
           $overrideQuery = @"
           USE SSISDB;
           UPDATE object_parameters

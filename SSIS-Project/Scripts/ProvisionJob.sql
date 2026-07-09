@@ -2,7 +2,7 @@ USE [msdb];
 GO
 SET NOCOUNT ON;
 
--- 1. Clear Out Stale Existing Job Definitions for THIS specific pipeline job only
+-- 1. Clear Out Stale Existing Job Definitions
 IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$(TARGET_JOB_NAME)')
 BEGIN
     EXEC msdb.dbo.sp_delete_job @job_name = N'$(TARGET_JOB_NAME)', @delete_unused_schedule = 1;
@@ -20,52 +20,28 @@ EXEC msdb.dbo.sp_add_job
 DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     DECLARE @execution_id BIGINT;
     DECLARE @resolved_path NVARCHAR(255);
-    DECLARE @resolved_package_name NVARCHAR(255);
 
-    -- 1. Strictly target the parameter path of YOUR deployed project name only
+    -- Grab the folder path parameter
     SELECT TOP 1 @resolved_path = CONVERT(NVARCHAR(255), op.design_default_value)
     FROM [SSISDB].[catalog].[object_parameters] op
     INNER JOIN [SSISDB].[catalog].[projects] p ON op.project_id = p.project_id
     INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
     WHERE f.name = N''$(CATALOG_FOLDER)''
-      AND p.name = N''$(PROJECT_NAME)'' -- Isolates query to your project context
+      AND p.name = N''$(PROJECT_NAME)''
       AND op.parameter_name = N''Source_File_Directory'';
-
-    -- 2. Strictly target the package filename compiled inside YOUR project context
-    SELECT TOP 1 @resolved_package_name = pkg.name
-    FROM [SSISDB].[catalog].[packages] pkg
-    INNER JOIN [SSISDB].[catalog].[projects] p ON pkg.project_id = p.project_id
-    INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
-    WHERE f.name = N''$(CATALOG_FOLDER)''
-      AND p.name = N''$(PROJECT_NAME)'';
-
-    -- Fallback safety check if metadata query returns blank
-    IF @resolved_package_name IS NULL
-    BEGIN
-        IF N''$(CATALOG_FOLDER)'' = N''TimesheetProductionMigration''
-            SET @resolved_package_name = N''TimesheetProductionMigrationPK.dtsx'';
-        ELSE
-            SET @resolved_package_name = N''TimesheetDevTestMigrationPK.dtsx'';
-    END
         
-    -- 3. Create the execution instance pointing explicitly to your pipeline asset layer
+    -- Create execution using your exact compiled package name
     EXEC [SSISDB].[catalog].[create_execution] 
         @folder_name = N''$(CATALOG_FOLDER)'', 
         @project_name = N''$(PROJECT_NAME)'', 
-        @package_name = @resolved_package_name, 
+        @package_name = N''TimesheetDevTestMigrationPK.dtsx'', 
         @reference_id = NULL, 
         @use32bitruntime = FALSE, 
         @execution_id = @execution_id OUTPUT;
         
-    -- 4. Apply the path parameter cleanly to the isolated execution context
-    BEGIN TRY
-        EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = @resolved_path;
-    END TRY
-    BEGIN CATCH
-        EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = @resolved_path;
-    END CATCH;
+    -- Apply the file path path
+    EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
+        @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = @resolved_path;
         
     EXEC [SSISDB].[catalog].[start_execution] @execution_id;
 ';
