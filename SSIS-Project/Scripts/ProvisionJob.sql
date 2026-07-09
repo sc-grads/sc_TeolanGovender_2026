@@ -59,21 +59,23 @@ DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     -- Apply the RootFolder directory parameter override string to the execution scope
     IF @resolved_path IS NOT NULL
     BEGIN
+        DECLARE @path_variant SQL_VARIANT = CAST(@resolved_path AS NVARCHAR(4000));
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
             @execution_id, 
             @object_type = 20, 
             @parameter_name = N''RootFolder'', 
-            @parameter_value = @resolved_path;
+            @parameter_value = @path_variant;
     END;
 
-    -- Apply OLE DB connection target overrides to land safely in the correct database instance
-    DECLARE @conn_string_db NVARCHAR(MAX) = N''Data Source='' + @server_name + '';Initial Catalog='' + @target_db + '';Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
+    -- FIXED: Changed from NVARCHAR(MAX) to NVARCHAR(4000) to resolve sql_variant type clash (Error 206)
+    DECLARE @conn_string_db NVARCHAR(4000) = N''Data Source='' + @server_name + '';Initial Catalog='' + @target_db + '';Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
+    DECLARE @conn_variant SQL_VARIANT = CAST(@conn_string_db AS NVARCHAR(4000));
     
     EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-        @execution_id, @object_type = 50, @parameter_name = N''LocalHost.TimesheetDB'', @parameter_value = @conn_string_db;
+        @execution_id, @object_type = 50, @parameter_name = N''LocalHost.TimesheetDB'', @parameter_value = @conn_variant;
 
     EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-        @execution_id, @object_type = 50, @parameter_name = N''LocalHost.TimesheetCMDB'', @parameter_value = @conn_string_db;
+        @execution_id, @object_type = 50, @parameter_name = N''LocalHost.TimesheetCMDB'', @parameter_value = @conn_variant;
 
     -- Launch package execution cleanly
     EXEC [SSISDB].[catalog].[start_execution] @execution_id;
