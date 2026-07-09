@@ -2,61 +2,39 @@ USE [msdb];
 GO
 SET NOCOUNT ON;
 
--- Dynamically configure naming variables based on server layout environment context
-DECLARE @targetJobName NVARCHAR(100);
-DECLARE @catalogFolder NVARCHAR(100);
-DECLARE @projectName NVARCHAR(100);
-DECLARE @targetFilePath NVARCHAR(255);
-
-IF @@SERVERNAME LIKE '%DEV%' OR @@SERVERNAME LIKE '%LOCAL%' -- Adjust keywords to match her server name properties
+-- 1. Clear Out Stale Existing Job Definitions using SQLCMD variables passed from GitHub
+IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$(TARGET_JOB_NAME)')
 BEGIN
-    -- Production (Partner's Named Instance Layout)
-    SET @targetJobName = N'RunTimesheetProductionMigrationPK';
-    SET @catalogFolder = N'TimesheetProductionMigration';
-    SET @projectName = N'TimesheetProductionMigrationPK';
-    SET @targetFilePath = N'c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\';
-END
-ELSE
-BEGIN
-    -- Local Staging
-    SET @targetJobName = N'RunTimesheetDevTestMigrationPK';
-    SET @catalogFolder = N'TimesheetDevTestMigration';
-    SET @projectName = N'TimesheetDevTestMigrationPK';
-    SET @targetFilePath = N'C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\';
-END
-
--- 1. Clear out existing job definition safely
-IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = @targetJobName)
-BEGIN
-    EXEC msdb.dbo.sp_delete_job @job_name = @targetJobName, @delete_unused_schedule = 1;
+    EXEC msdb.dbo.sp_delete_job @job_name = N'$(TARGET_JOB_NAME)', @delete_unused_schedule = 1;
 END;
+GO
 
--- 2. Provision the core automated agent 
+-- 2. Provision the Core Automated Job Agent
 DECLARE @jobId BINARY(16);
 EXEC msdb.dbo.sp_add_job     
-    @job_name = @targetJobName, 
+    @job_name = N'$(TARGET_JOB_NAME)', 
     @enabled = 1, 
     @job_id = @jobId OUTPUT;
 
--- 3. Prepare the engine execution payload
+-- 3. Prepare the T-SQL Execution Payload
 DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     DECLARE @execution_id BIGINT;
     
     EXEC [SSISDB].[catalog].[create_execution] 
-        @folder_name = N''' + @catalogFolder + ''', 
-        @project_name = N''' + @projectName + ''', 
-        @package_name = N''Package2.dtsx'', -- ◄ Ensure your .dtsx layout match filename inside Visual Studio
+        @folder_name = N''$(CATALOG_FOLDER)'', 
+        @project_name = N''$(PROJECT_NAME)'', 
+        @package_name = N''Package2.dtsx'', 
         @reference_id = NULL, 
         @use32bitruntime = FALSE, 
         @execution_id = @execution_id OUTPUT;
     
     BEGIN TRY
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = N''' + @targetFilePath + ''';
+            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = N''$(TARGET_FILE_PATH)'';
     END TRY
     BEGIN CATCH
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = N''' + @targetFilePath + ''';
+            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = N''$(TARGET_FILE_PATH)'';
     END CATCH;
     
     EXEC [SSISDB].[catalog].[start_execution] @execution_id;
