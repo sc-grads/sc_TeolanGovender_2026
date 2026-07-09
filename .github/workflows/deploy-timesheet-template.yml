@@ -49,7 +49,7 @@ jobs:
         run: |
           if ("${{ inputs.environment_name }}" -eq "production") {
               Write-Host "Production detected. Applying folder permission adjustments..."
-              $folderPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets"
+              $folderPath = "C:\Timesheets"
               
               if (-not (Test-Path -Path $folderPath)) {
                   Write-Host "Folder structure missing on the runner. Creating directory path..."
@@ -79,7 +79,6 @@ jobs:
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
         run: |
           Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          # FIXED: Path updated to match your exact repository structure
           $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationTG.ispac"
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
@@ -96,7 +95,7 @@ jobs:
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
           DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigration' || 'TimesheetDevTestMigration' }}';
-          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
+          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetMigrationTwo' || 'TimesheetDevTestMigrationTG' }}';
 
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
@@ -127,7 +126,7 @@ jobs:
           if ("${{ inputs.environment_name }}" -eq "production") {
               $jobName = "RunTimesheetProductionMigrationTG"
               $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetProductionMigrationTG"
+              $projectName = "TimesheetMigrationTwo"
           } else {
               $jobName = "RunTimesheetDevTestMigrationTG"
               $catalogFolder = "TimesheetDevTestMigration"
@@ -141,12 +140,13 @@ jobs:
 
       - name: 9. Override SSIS Project Parameters for Target Environment
         run: |
+          $targetPath = "C:\Timesheets\"
           if ("${{ inputs.environment_name }}" -eq "production") {
-              $targetPath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\"
               $catalogFolder = "TimesheetProductionMigration"
+              $projectName = "TimesheetMigrationTwo"
           } else {
-              $targetPath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\"
               $catalogFolder = "TimesheetDevTestMigration"
+              $projectName = "TimesheetDevTestMigrationTG"
           }
           
           Write-Host "Applying runtime path override to folder ${catalogFolder}: ${targetPath}"
@@ -161,7 +161,8 @@ jobs:
           INNER JOIN catalog.projects p ON object_parameters.project_id = p.project_id
           INNER JOIN catalog.folders f ON p.folder_id = f.folder_id
           WHERE f.name = N'$catalogFolder'
-            AND object_parameters.parameter_name = N'Source_File_Directory';
+            AND p.name = N'$projectName'
+            AND object_parameters.parameter_name = N'RootFolder';
           "@
           
           $tempSqlFile = Join-Path $env:RUNNER_TEMP "OverrideParams.sql"
