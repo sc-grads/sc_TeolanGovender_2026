@@ -2,7 +2,7 @@ USE [msdb];
 GO
 SET NOCOUNT ON;
 
--- 1. Clear Out Stale Existing Job Definitions using SQLCMD variables passed from GitHub
+-- 1. Clear Out Stale Existing Job Definitions
 IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$(TARGET_JOB_NAME)')
 BEGIN
     EXEC msdb.dbo.sp_delete_job @job_name = N'$(TARGET_JOB_NAME)', @delete_unused_schedule = 1;
@@ -17,9 +17,21 @@ EXEC msdb.dbo.sp_add_job
     @job_id = @jobId OUTPUT;
 
 -- 3. Prepare the T-SQL Execution Payload
+-- We dynamically fetch the path directly from SSISDB parameter metadata at runtime!
 DECLARE @tsqlCommand NVARCHAR(MAX) = N'
     DECLARE @execution_id BIGINT;
+    DECLARE @resolved_path NVARCHAR(255);
+
+    -- Grab the path parameter that Step 9 successfully updated
+    SELECT TOP 1 @resolved_path = design_default_value
+    FROM [SSISDB].[catalog].[object_parameters] op
+    INNER JOIN [SSISDB].[catalog].[projects] p ON op.project_id = p.project_id
+    INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
+    WHERE f.name = N''$(CATALOG_FOLDER)''
+      AND p.name = N''$(PROJECT_NAME)''
+      AND op.parameter_name = N''Source_File_Directory'';
     
+    -- Create the execution instance in the SSIS catalog
     EXEC [SSISDB].[catalog].[create_execution] 
         @folder_name = N''$(CATALOG_FOLDER)'', 
         @project_name = N''$(PROJECT_NAME)'', 
@@ -28,13 +40,14 @@ DECLARE @tsqlCommand NVARCHAR(MAX) = N'
         @use32bitruntime = FALSE, 
         @execution_id = @execution_id OUTPUT;
     
+    -- Dynamically apply the fetched path parameter to the execution run
     BEGIN TRY
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = N''$(TARGET_FILE_PATH)'';
+            @execution_id, @object_type = 20, @parameter_name = N''Source_File_Directory'', @parameter_value = @resolved_path;
     END TRY
     BEGIN CATCH
         EXEC [SSISDB].[catalog].[set_execution_parameter_value] 
-            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = N''$(TARGET_FILE_PATH)'';
+            @execution_id, @object_type = 30, @parameter_name = N''Project::Source_File_Directory'', @parameter_value = @resolved_path;
     END CATCH;
     
     EXEC [SSISDB].[catalog].[start_execution] @execution_id;

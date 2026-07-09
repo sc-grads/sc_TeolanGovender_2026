@@ -125,23 +125,20 @@ jobs:
 
       - name: 8. Provision 30-Second Scheduled Execution Job
         run: |
-          # Doubling the final trailing slash stops sqlcmd from escaping the string brackets
           if ("${{ inputs.environment_name }}" -eq "production") {
               $jobName = "RunTimesheetProductionMigrationPK"
               $catalogFolder = "TimesheetProductionMigration"
               $projectName = "TimesheetProductionMigrationPK"
-              $filePath = "c:\sc_CharmaneMchunu_2026\SSIS-Project-TG\Timesheets\\"
           } else {
               $jobName = "RunTimesheetDevTestMigrationPK"
               $catalogFolder = "TimesheetDevTestMigration"
               $projectName = "TimesheetDevTestMigrationPK"
-              $filePath = "C:\sc_TeolanGovender_2026\SSIS-Project\Timesheets\\"
           }
 
           Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"
 
-          # Inject parameters directly into the SQL script variables using the -v flag
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b -v TARGET_JOB_NAME="$jobName" CATALOG_FOLDER="$catalogFolder" PROJECT_NAME="$projectName" TARGET_FILE_PATH="$filePath"
+          # Removed TARGET_FILE_PATH entirely to fix the sqlcmd parsing error
+          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b -v TARGET_JOB_NAME="$jobName" CATALOG_FOLDER="$catalogFolder" PROJECT_NAME="$projectName"
         shell: pwsh
 
       - name: 9. Override SSIS Project Parameters for Target Environment
