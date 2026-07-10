@@ -13,8 +13,8 @@
   DTS:MaxErrorCount="9999"
   DTS:ObjectName="TimesheetDevTestMigrationTG"
   DTS:PackageType="5"
-  DTS:VersionBuild="432"
-  DTS:VersionGUID="{3480F871-10C6-4096-947C-94CD5342EB41}">
+  DTS:VersionBuild="437"
+  DTS:VersionGUID="{8131559C-27F0-4884-A641-8E9B5AAADC86}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -71,6 +71,18 @@
           DTS:ConnectRetryCount="1"
           DTS:ConnectRetryInterval="5"
           DTS:ConnectionString="Data Source=.;Initial Catalog=TimesheetTGDB;Provider=SQLNCLI11.1;Integrated Security=SSPI;Application Name=SSIS-Package2-{38AA2BEB-B44D-4A2E-946D-48BF991B85B6}LocalHost.TimesheetTGDB;Auto Translate=False;" />
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[LocalHost.TimesheetTGDB1]"
+      DTS:CreationName="OLEDB"
+      DTS:DTSID="{CC192B4B-3EE7-4B6C-BDEA-0051DA15A8AC}"
+      DTS:ObjectName="LocalHost.TimesheetTGDB1">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectRetryCount="1"
+          DTS:ConnectRetryInterval="5"
+          DTS:ConnectionString="Data Source=.;Initial Catalog=TimesheetTGDB;Provider=MSOLEDBSQL.1;Integrated Security=SSPI;Application Name=SSIS-TimesheetDevTestMigrationTG-{CC192B4B-3EE7-4B6C-BDEA-0051DA15A8AC}LocalHost.TimesheetTGDB1;Auto Translate=False;" />
       </DTS:ObjectData>
     </DTS:ConnectionManager>
   </DTS:ConnectionManagers>
@@ -350,7 +362,7 @@
         DTS:FilterKind="0" />
       <DTS:ObjectData>
         <SQLTask:SqlTaskData
-          SQLTask:Connection="{38AA2BEB-B44D-4A2E-946D-48BF991B85B6}"
+          SQLTask:Connection="{CC192B4B-3EE7-4B6C-BDEA-0051DA15A8AC}"
           SQLTask:SqlStatementSource="EXEC dbo.usp_TruncateStagingTables;&#xA;&#xA;SELECT ISNULL(MAX(RunNumber), 0) + 1 AS NewRunNumber &#xA;FROM dbo.AuditLog;"
           SQLTask:ResultType="ResultSetType_SingleRow" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
           <SQLTask:ResultBinding
@@ -375,7 +387,7 @@
         DTS:FilterKind="0" />
       <DTS:ObjectData>
         <SQLTask:SqlTaskData
-          SQLTask:Connection="{38AA2BEB-B44D-4A2E-946D-48BF991B85B6}"
+          SQLTask:Connection="{CC192B4B-3EE7-4B6C-BDEA-0051DA15A8AC}"
           SQLTask:SqlStatementSource="DECLARE @PassedRunNo INT = ?;&#xA;&#xA;EXEC dbo.usp_ProcessStagingToMaster &#xA;    @CurrentFilePath = 'Merged To Master Tables', &#xA;    @SSISTaskName = 'Master Tables Processing',&#xA;    @PackageRunNumber = @PassedRunNo;" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
           <SQLTask:ParameterBinding
             SQLTask:ParameterName="0"
@@ -404,7 +416,7 @@
         <DTS:ObjectData>
           <ForEachFileEnumeratorProperties>
             <FEFEProperty
-              Folder="C:\Timesheets\TeolanTimesheet" />
+              Folder="C:\Timesheets\" />
             <FEFEProperty
               FileSpec="*.xlsx" />
             <FEFEProperty
@@ -1808,8 +1820,8 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                           <connections>
                             <connection
                               refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination.Connections[OleDbConnection]"
-                              connectionManagerID="Package.ConnectionManagers[LocalHost.TimesheetTGDB]"
-                              connectionManagerRefId="Package.ConnectionManagers[LocalHost.TimesheetTGDB]"
+                              connectionManagerID="Package.ConnectionManagers[LocalHost.TimesheetTGDB1]"
+                              connectionManagerRefId="Package.ConnectionManagers[LocalHost.TimesheetTGDB1]"
                               description="The OLE DB runtime connection used to access the database."
                               name="OleDbConnection" />
                           </connections>
@@ -2699,8 +2711,8 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                       <connections>
                         <connection
                           refId="Package\Foreach File Loop\Sequence Container B\DFT_Leave\OLE DB Destination.Connections[OleDbConnection]"
-                          connectionManagerID="Package.ConnectionManagers[LocalHost.TimesheetTGDB]"
-                          connectionManagerRefId="Package.ConnectionManagers[LocalHost.TimesheetTGDB]"
+                          connectionManagerID="Package.ConnectionManagers[LocalHost.TimesheetTGDB1]"
+                          connectionManagerRefId="Package.ConnectionManagers[LocalHost.TimesheetTGDB1]"
                           description="The OLE DB runtime connection used to access the database."
                           name="OleDbConnection" />
                       </connections>
@@ -3622,8 +3634,8 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
       <DTS:ForEachVariableMappings>
         <DTS:ForEachVariableMapping
           DTS:CreationName=""
-          DTS:DTSID="{6B00DB41-044B-4474-A2CF-80FD113FE385}"
-          DTS:ObjectName="{6B00DB41-044B-4474-A2CF-80FD113FE385}"
+          DTS:DTSID="{AD0556A3-B75B-4D9D-967F-F2606A5AE68F}"
+          DTS:ObjectName="{AD0556A3-B75B-4D9D-967F-F2606A5AE68F}"
           DTS:ValueIndex="0"
           DTS:VariableName="User::FilePath" />
       </DTS:ForEachVariableMappings>
@@ -3857,10 +3869,10 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           PanelSize="670,492"
           Size="670,535"
           Id="Package\Foreach File Loop"
-          TopLeft="55.3888888888891,110.960317460318" />
+          TopLeft="56.3888888888891,110.960317460318" />
         <EdgeLayout
           Id="Package.PrecedenceConstraints[Constraint]"
-          TopLeft="388.330086580087,79.8975468975472">
+          TopLeft="388.830086580087,79.8975468975472">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
@@ -3882,7 +3894,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         </EdgeLayout>
         <EdgeLayout
           Id="Package.PrecedenceConstraints[Constraint 1]"
-          TopLeft="386.898268398267,645.960317460318">
+          TopLeft="387.398268398267,645.960317460318">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
@@ -3953,9 +3965,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <mssgm:EdgeLabel
-              BoundingBox="0,0,0,0"
-              RelativePosition="Any" />
+            <EdgeLabelCollection />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4025,9 +4035,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <mssgm:EdgeLabel
-              BoundingBox="0,0,0,0"
-              RelativePosition="Any" />
+            <EdgeLabelCollection />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4049,9 +4057,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <mssgm:EdgeLabel
-              BoundingBox="0,0,0,0"
-              RelativePosition="Any" />
+            <EdgeLabelCollection />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4085,9 +4091,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <mssgm:EdgeLabel
-              BoundingBox="0,0,0,0"
-              RelativePosition="Any" />
+            <EdgeLabelCollection />
           </EdgeLayout.Labels>
         </EdgeLayout>
       </GraphLayout>
