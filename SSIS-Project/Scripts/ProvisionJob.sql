@@ -22,14 +22,17 @@ DECLARE @realPackageName NVARCHAR(100);
 SELECT TOP 1 @realPackageName = pk.name
 FROM SSISDB.catalog.packages pk
 INNER JOIN SSISDB.catalog.projects p ON pk.project_id = p.project_id
-INNER JOIN [SSISDB].[catalog].[folders] f ON p.folder_id = f.folder_id
+INNER JOIN SSISDB.catalog.folders f ON p.folder_id = f.folder_id
 WHERE f.name = N'$(CATALOG_FOLDER)' 
   AND p.name = N'$(PROJECT_NAME)';
 
--- FIXED: Aligning the fallback guess to match your project compilation name
+-- FIXED: Smart fallback matching her exact design-time package naming convention
 IF @realPackageName IS NULL
 BEGIN
-    SET @realPackageName = N'TimesheetDevTestMigrationTG.dtsx';
+    SET @realPackageName = CASE 
+        WHEN N'$(CATALOG_FOLDER)' LIKE '%Production%' THEN N'TimesheetProductionMigrationPK.dtsx'
+        ELSE N'TimesheetDevTestMigrationTG.dtsx'
+    END;
 END;
 
 -- 4. Determine target runtime database environment isolation context
