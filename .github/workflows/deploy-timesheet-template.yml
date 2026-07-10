@@ -260,18 +260,18 @@ jobs:
               @parameter_name = N''CM.LocalHost.TimesheetTGDB.ConnectionString'', 
               @parameter_value = N''Data Source=' + @@SERVERNAME + N';Initial Catalog=$targetDatabase;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
 
-          -- 2. Redirect your Excel Manager to point to her file inside the shared directory layout
+          -- 2. Force Main Excel Connection to use the exact singular folder path layout
           EXEC [SSISDB].[catalog].[set_object_parameter_value] 
               @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @object_name = N''$packageName'',
               @parameter_name = N''CM.Excel Connection Manager.ConnectionString'', 
-              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheets\Buhle_Mukhuba_April_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
+              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheet\Buhle_Mukhuba_March_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
 
-          -- 3. Redirect your Leave Excel Manager to the same file target
+          -- 3. Force Leave Excel Connection to use the exact singular folder path layout
           EXEC [SSISDB].[catalog].[set_object_parameter_value] 
               @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @object_name = N''$packageName'',
               @parameter_name = N''CM.Excel Connection Manager For Leave.ConnectionString'', 
-              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheets\Buhle_Mukhuba_April_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
-
+              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheet\Buhle_Mukhuba_March_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
+          
           EXEC [SSISDB].[catalog].[start_execution] @execution_id;
           ';
 
