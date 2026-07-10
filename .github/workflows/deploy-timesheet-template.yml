@@ -92,7 +92,6 @@ jobs:
           $envName = "${{ inputs.environment_name }}".ToLower()
           if ($envName -eq "production") {
               $folderName   = "TimesheetProductionMigrationTG"
-              # FIXED: Aligned to match the internal compiled project name inside your ISPAC binary
               $projectName  = "TimesheetDevTestMigrationTG"
               $packageName  = "TimesheetDevTestMigrationTG.dtsx"
               $executionJobName = "RunTimesheetProductionMigrationTG"
@@ -104,11 +103,9 @@ jobs:
           }
           $tempTable     = "TempHex_$([System.Guid]::NewGuid().ToString('N'))"
 
-          # Read and hex-encode ISPAC
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
 
-          # Create temp table and stream hex
           $tempSql = Join-Path $env:TEMP "create_temp_$([System.Guid]::NewGuid().ToString('N')).sql"
           $createTableSql = @"
           USE SSISDB;
@@ -121,7 +118,6 @@ jobs:
           sqlcmd -b -S "$tunnelAddress" -U "$dbUser" -P "$dbPassword" -i $tempSql
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
-          # Build T-SQL script for deployment execution loop
           $deployScript = @"
           USE SSISDB;
           DECLARE @hex NVARCHAR(MAX);
@@ -170,7 +166,6 @@ jobs:
               if ($conn2.State -eq 'Open') { $conn2.Close() }
           }
 
-          # Monitor Job Status until completed
           $isRunningSql = "USE [msdb]; SELECT TOP 1 ja.stop_execution_date FROM msdb.dbo.sysjobactivity ja INNER JOIN msdb.dbo.sysjobs j ON ja.job_id = j.job_id WHERE j.name = N'$helperJobName' ORDER BY ja.start_execution_date DESC;"
           $outcomeSql = "USE [msdb]; DECLARE @job_id UNIQUEIDENTIFIER = (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$helperJobName'); SELECT TOP 1 run_status FROM msdb.dbo.sysjobhistory WHERE job_id = @job_id AND step_id = 0 ORDER BY instance_id DESC;"
           
@@ -184,7 +179,6 @@ jobs:
               } finally { $pollConn.Close() }
           }
 
-          # Verify deployment execution state
           $statusConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
           try {
               $statusConn.Open()
@@ -195,7 +189,6 @@ jobs:
               }
           } finally { $statusConn.Close() }
 
-          # Final cleanup tracking
           $cleanupSql = "USE [msdb]; EXEC dbo.sp_delete_job @job_name = N'$helperJobName'; USE SSISDB; DROP TABLE dbo.$tempTable;"
           $cleanConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
           try {
@@ -212,6 +205,7 @@ jobs:
           $tunnelAddress = "$env:SQL_SERVER"
           $dbUser        = "$env:SQL_USERNAME"
           $dbPassword    = "$env:SQL_PASSWORD"
+          $targetDatabase = "$env:DATABASE_NAME"
           
           $envName = "${{ inputs.environment_name }}".ToLower()
           if ($envName -eq "production") {
@@ -219,13 +213,11 @@ jobs:
               $projectName  = "TimesheetDevTestMigrationTG"
               $packageName  = "TimesheetDevTestMigrationTG.dtsx"
               $executionJobName = "RunTimesheetProductionMigrationTG"
-              $targetDatabase = "TimesheetTGDB"
           } else {
               $folderName   = "TimesheetDevTestMigrationTG"
               $projectName  = "TimesheetDevTestMigrationTG"
               $packageName  = "TimesheetDevTestMigrationTG.dtsx"
               $executionJobName = "RunTimesheetDevTestMigration"
-              $targetDatabase = "TimesheetDB"
           }
 
           $jobSql = @"
@@ -254,23 +246,10 @@ jobs:
           
           EXEC [SSISDB].[catalog].[set_execution_parameter_value] @execution_id, @object_type = 50, @parameter_name = N''LOGGING_LEVEL'', @parameter_value = 1;
           
-          -- 1. Database Connection Intercept
           EXEC [SSISDB].[catalog].[set_object_parameter_value] 
               @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @object_name = N''$packageName'',
               @parameter_name = N''CM.LocalHost.TimesheetTGDB.ConnectionString'', 
-              @parameter_value = N''Data Source=' + @@SERVERNAME + N';Initial Catalog=$targetDatabase;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
-
-          -- 2. Force Main Excel Connection to use the exact singular folder path layout
-          EXEC [SSISDB].[catalog].[set_object_parameter_value] 
-              @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @object_name = N''$packageName'',
-              @parameter_name = N''CM.Excel Connection Manager.ConnectionString'', 
-              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheet\Buhle_Mukhuba_March_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
-
-          -- 3. Force Leave Excel Connection to use the exact singular folder path layout
-          EXEC [SSISDB].[catalog].[set_object_parameter_value] 
-              @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @object_name = N''$packageName'',
-              @parameter_name = N''CM.Excel Connection Manager For Leave.ConnectionString'', 
-              @parameter_value = N''Provider=Microsoft.ACE.OLEDB.16.0;Data Source=C:\Timesheets\BuhleTimesheet\Buhle_Mukhuba_March_FinalWeek.xlsx;Extended Properties="EXCEL 12.0 XML;HDR=NO";'';
+              @parameter_value = N''Data Source=' + @@SERVERNAME + N';Initial Catalog=$targetDatabase;Provider=MSOLEDBSQL;Integrated Security=SSPI;Auto Translate=False;'';
           
           EXEC [SSISDB].[catalog].[start_execution] @execution_id;
           ';
@@ -301,5 +280,5 @@ jobs:
               $command = $connection.CreateCommand()
               $command.CommandText = $jobSql
               $command.ExecuteNonQuery() | Out-Null
-              Write-Host "SUCCESS: Target execution job configured with shared Excel path overrides."
+              Write-Host "SUCCESS: Target execution job configured dynamically using MSOLEDBSQL provider."
           } finally { $connection.Close() }
