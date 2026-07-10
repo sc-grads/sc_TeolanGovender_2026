@@ -76,7 +76,6 @@ jobs:
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
-          # Dynamic Variable Assignment Safe From Case-Sensitivity Discrepancies
           $envName = "${{ inputs.environment_name }}".ToLower()
           if ($envName -eq "production") {
               $catalogFolder = "TimesheetProductionMigrationTG"
@@ -97,15 +96,16 @@ jobs:
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
           DECLARE @dynamic_tsql NVARCHAR(MAX);
+          -- FIXED: Wrapped folder and project strings in escaped triple-single-quotes so T-SQL compiles them as literals
           SET @dynamic_tsql = N'
           SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = N''' + $catalogFolder + ''') 
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = N''' + '$catalogFolder' + ''') 
           BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N''' + $catalogFolder + '''; 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N''' + '$catalogFolder' + '''; 
           END
           
           DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = N''' + $catalogFolder + ''', @project_name = N''' + $projectName + ''', @project_stream = @project_binary;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = N''' + '$catalogFolder' + ''', @project_name = N''' + '$projectName' + ''', @project_stream = @project_binary;
           ';
           
           EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
