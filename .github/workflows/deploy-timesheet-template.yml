@@ -125,8 +125,7 @@ jobs:
               END;
           END;
 
-          #EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper';
-          #"@
+          "@
           
           $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunProxyDeploy.sql"
           $proxyWrapperQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
