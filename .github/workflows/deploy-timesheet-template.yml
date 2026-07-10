@@ -85,6 +85,7 @@ jobs:
               $projectName = "TimesheetDevTestMigrationTG"
           }
 
+          # FIXED: Injected the clean string values dynamically directly into the wrapper configuration variables
           $proxyWrapperQuery = @"
           SET NOCOUNT ON;
           IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
@@ -95,17 +96,19 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
+          DECLARE @catalogFolder NVARCHAR(100) = N'$catalogFolder';
+          DECLARE @projectName NVARCHAR(100) = N'$projectName';
+
           DECLARE @dynamic_tsql NVARCHAR(MAX);
-          -- FIXED: Wrapped folder and project strings in escaped triple-single-quotes so T-SQL compiles them as literals
           SET @dynamic_tsql = N'
           SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = N''' + '$catalogFolder' + ''') 
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = @catalogFolder) 
           BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N''' + '$catalogFolder' + '''; 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = @catalogFolder; 
           END
           
           DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = N''' + '$catalogFolder' + ''', @project_name = N''' + '$projectName' + ''', @project_stream = @project_binary;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = @catalogFolder, @project_name = @projectName, @project_stream = @project_binary;
           ';
           
           EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
