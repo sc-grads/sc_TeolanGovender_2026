@@ -255,9 +255,9 @@ jobs:
           
           EXEC [SSISDB].[catalog].[set_execution_parameter_value] @execution_id, @object_type = 50, @parameter_name = N''LOGGING_LEVEL'', @parameter_value = 1;
           
-          -- FIXED: Changed @object_type to 20 (Package scope) and added @object_name mapping
+          -- FIXED: Using object_type = 30 (Package scope) along with the explicit package name target
           EXEC [SSISDB].[catalog].[set_object_parameter_value] 
-              @object_type = 20, 
+              @object_type = 30, 
               @folder_name = N''$folderName'', 
               @project_name = N''$projectName'', 
               @object_name = N''$packageName'',
