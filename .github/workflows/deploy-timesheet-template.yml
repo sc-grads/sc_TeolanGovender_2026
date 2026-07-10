@@ -76,6 +76,16 @@ jobs:
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
           
+          # Dynamic Variable Assignment Safe From Case-Sensitivity Discrepancies
+          $envName = "${{ inputs.environment_name }}".ToLower()
+          if ($envName -eq "production") {
+              $catalogFolder = "TimesheetProductionMigrationTG"
+              $projectName = "TimesheetProductionMigrationTG"
+          } else {
+              $catalogFolder = "TimesheetDevTestMigrationTG"
+              $projectName = "TimesheetDevTestMigrationTG"
+          }
+
           $proxyWrapperQuery = @"
           SET NOCOUNT ON;
           IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
@@ -86,26 +96,22 @@ jobs:
           DECLARE @jobId BINARY(16);
           EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
           
-          DECLARE @catalogFolder NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
-          DECLARE @projectName NVARCHAR(100) = N'${{ inputs.environment_name == 'production' && 'TimesheetProductionMigrationTG' || 'TimesheetDevTestMigrationTG' }}';
-
           DECLARE @dynamic_tsql NVARCHAR(MAX);
           SET @dynamic_tsql = N'
           SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = ''' + @catalogFolder + ''') 
+          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = N''' + $catalogFolder + ''') 
           BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = ''' + @catalogFolder + '''; 
+              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N''' + $catalogFolder + '''; 
           END
           
           DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = ''' + @catalogFolder + ''', @project_name = ''' + @projectName + ''', @project_stream = @project_binary;
+          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = N''' + $catalogFolder + ''', @project_name = N''' + $projectName + ''', @project_stream = @project_binary;
           ';
           
           EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
           EXEC msdb.dbo.sp_add_jobserver @job_name = N'GitHub_SSIS_Deploy_Helper', @server_name = N'(local)';
           EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
 
-          -- FIXED: Wait until a history log entry appears, proving the job completed its run
           DECLARE @job_finished INT = 0;
           WHILE (@job_finished = 0)
           BEGIN
@@ -116,7 +122,6 @@ jobs:
               END;
           END;
 
-          -- CLEANUP: Wipe out the helper job out of existence completely
           EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper';
           "@
           
@@ -128,7 +133,8 @@ jobs:
 
       - name: 8. Provision 30-Second Scheduled Execution Job
         run: |
-          if ("${{ inputs.environment_name }}" -eq "production") {
+          $envName = "${{ inputs.environment_name }}".ToLower()
+          if ($envName -eq "production") {
               $jobName = "RunTimesheetProductionMigrationTG"
               $catalogFolder = "TimesheetProductionMigrationTG"
               $projectName = "TimesheetProductionMigrationTG"
