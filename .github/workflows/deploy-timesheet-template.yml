@@ -89,12 +89,12 @@ jobs:
           $dbUser        = "$env:SQL_USERNAME"
           $dbPassword    = "$env:SQL_PASSWORD"
           
-          # Fixed Path Alignment Logic
           $envName = "${{ inputs.environment_name }}".ToLower()
           if ($envName -eq "production") {
               $folderName   = "TimesheetProductionMigrationTG"
-              $projectName  = "TimesheetProductionMigrationTG"
-              $packageName  = "TimesheetProductionMigrationPK.dtsx"
+              # FIXED: Aligned to match the internal compiled project name inside your ISPAC binary
+              $projectName  = "TimesheetDevTestMigrationTG"
+              $packageName  = "TimesheetDevTestMigrationTG.dtsx"
               $executionJobName = "RunTimesheetProductionMigrationTG"
           } else {
               $folderName   = "TimesheetDevTestMigrationTG"
@@ -174,7 +174,6 @@ jobs:
           $isRunningSql = "USE [msdb]; SELECT TOP 1 ja.stop_execution_date FROM msdb.dbo.sysjobactivity ja INNER JOIN msdb.dbo.sysjobs j ON ja.job_id = j.job_id WHERE j.name = N'$helperJobName' ORDER BY ja.start_execution_date DESC;"
           $outcomeSql = "USE [msdb]; DECLARE @job_id UNIQUEIDENTIFIER = (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$helperJobName'); SELECT TOP 1 run_status FROM msdb.dbo.sysjobhistory WHERE job_id = @job_id AND step_id = 0 ORDER BY instance_id DESC;"
           
-          $finished = $false
           while ($true) {
               Start-Sleep -Seconds 4
               $pollConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
@@ -205,6 +204,90 @@ jobs:
           } finally { $cleanConn.Close() }
 
           Remove-Item $tempSql -Force -ErrorAction SilentlyContinue
+
+      # ==================== CREATE PERMANENT SCHEDULED JOB ====================
+      - name: 8. Provision 30-Second Scheduled Execution Job
+        shell: pwsh
+        run: |
+          $tunnelAddress = "$env:SQL_SERVER"
+          $dbUser        = "$env:SQL_USERNAME"
+          $dbPassword    = "$env:SQL_PASSWORD"
+          
+          $envName = "${{ inputs.environment_name }}".ToLower()
+          if ($envName -eq "production") {
+              $folderName   = "TimesheetProductionMigrationTG"
+              # FIXED: Matches the exact project identity name
+              $projectName  = "TimesheetDevTestMigrationTG"
+              $packageName  = "TimesheetDevTestMigrationTG.dtsx"
+              $executionJobName = "RunTimesheetProductionMigrationTG"
+              $targetDatabase = "TimesheetTGDB"
+          } else {
+              $folderName   = "TimesheetDevTestMigrationTG"
+              $projectName  = "TimesheetDevTestMigrationTG"
+              $packageName  = "TimesheetDevTestMigrationTG.dtsx"
+              $executionJobName = "RunTimesheetDevTestMigration"
+              $targetDatabase = "TimesheetDB"
+          }
+
+          $jobSql = @"
+          USE [msdb];
+          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$executionJobName')
+          BEGIN
+              EXEC dbo.sp_delete_job @job_name = N'$executionJobName', @delete_unused_schedule=1;
+          END
+
+          DECLARE @jobId BINARY(16);
+          EXEC dbo.sp_add_job
+              @job_name = N'$executionJobName',
+              @enabled = 1,
+              @owner_login_name = N'sa',
+              @job_id = @jobId OUTPUT;
+
+          DECLARE @run_command NVARCHAR(MAX);
+          SET @run_command = N'
+          DECLARE @execution_id BIGINT;
+          EXEC [SSISDB].[catalog].[create_execution]
+              @folder_name = N''$folderName'',
+              @project_name = N''$projectName'',
+              @package_name = N''$packageName'',
+              @use32bitruntime = False,
+              @execution_id = @execution_id OUTPUT;
+          
+          EXEC [SSISDB].[catalog].[set_execution_parameter_value] @execution_id, @object_type = 50, @parameter_name = N''LOGGING_LEVEL'', @parameter_value = 1;
+          
+          EXEC [SSISDB].[catalog].[set_object_parameter_value] @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @parameter_name = N''CM.LocalHost.TimesheetTGDB.ConnectionString'', @parameter_value = N''Data Source=' + @@SERVERNAME + N';Initial Catalog=$targetDatabase;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
+
+          EXEC [SSISDB].[catalog].[start_execution] @execution_id;
+          ';
+
+          EXEC dbo.sp_add_jobstep
+              @job_name = N'$executionJobName',
+              @step_name = N'Execute SSIS Package',
+              @subsystem = N'TSQL',
+              @command = @run_command,
+              @retry_attempts = 0;
+
+          EXEC dbo.sp_add_jobserver @job_name = N'$executionJobName', @server_name = N'(local)';
+
+          EXEC dbo.sp_add_jobschedule
+              @job_name = N'$executionJobName',
+              @name = N'Every30Seconds',
+              @enabled = 1,
+              @freq_type = 4,
+              @freq_interval = 1,
+              @freq_subday_type = 2,
+              @freq_subday_interval = 30,
+              @active_start_time = 000000;
+          "@
+
+          $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=$tunnelAddress;Initial Catalog=msdb;User ID=$dbUser;Password=$dbPassword;TrustServerCertificate=True;Encrypt=False;")
+          try {
+              $connection.Open()
+              $command = $connection.CreateCommand()
+              $command.CommandText = $jobSql
+              $command.ExecuteNonQuery() | Out-Null
+              Write-Host "SUCCESS: Target execution job configured successfully."
+          } finally { $connection.Close() }
 
       # ==================== CREATE PERMANENT SCHEDULED JOB ====================
       - name: 8. Provision 30-Second Scheduled Execution Job
