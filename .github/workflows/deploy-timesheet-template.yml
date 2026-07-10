@@ -21,130 +21,271 @@ jobs:
     runs-on: windows-latest
     environment: ${{ inputs.environment_name }}
 
+    env:
+      SQL_USERNAME: ${{ secrets.sql_username }}
+      SQL_PASSWORD: ${{ secrets.sql_password }}
+      SQL_SERVER: ${{ vars.SQL_SERVER }}
+      DATABASE_NAME: ${{ inputs.database }}
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 1. Run Pre-Flight Create Database Script
+      - name: Install Chocolatey and sqlcmd
+        shell: powershell
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i "SSIS-Project/Scripts/CreateDatabase.sql" -b
-        shell: pwsh
+          if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Host "Installing Chocolatey..."
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+            iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          }
+          choco install sqlcmd -y
+          refreshenv
+
+      - name: 1. Run Pre-Flight Create Database Script
+        shell: powershell
+        run: |
+          sqlcmd -b -S "$env:SQL_SERVER" -U "$env:SQL_USERNAME" -P "$env:SQL_PASSWORD" -v DATABASE_NAME="$env:DATABASE_NAME" -i "SSIS-Project/Scripts/CreateDatabase.sql"
 
       - name: 2. Deploy Database Schema Tables
+        shell: powershell
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateTables.sql" -b
-        shell: pwsh
+          sqlcmd -b -S "$env:SQL_SERVER" -U "$env:SQL_USERNAME" -P "$env:SQL_PASSWORD" -d "$env:DATABASE_NAME" -i "SSIS-Project/Scripts/CreateTables.sql"
 
       - name: 3. Deploy Database Indexes
+        shell: powershell
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateIndexes.sql" -b
-        shell: pwsh
+          sqlcmd -b -S "$env:SQL_SERVER" -U "$env:SQL_USERNAME" -P "$env:SQL_PASSWORD" -d "$env:DATABASE_NAME" -i "SSIS-Project/Scripts/CreateIndexes.sql"
 
-      - name: 4. Deploy Stored Procedures (Table Dependency Safe)
+      - name: 4. Deploy Stored Procedures
+        shell: powershell
         run: |
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d "${{ inputs.database }}" -i "SSIS-Project/Scripts/CreateStoredProcedure.sql" -b
-        shell: pwsh
-
-      - name: 4b. Fix Remote Folder Permissions for SQL Agent Account
-        run: |
-          Write-Host "Applying unified folder root and permissions..."
-          $folderPath = "C:\Timesheets"
-          if (-not (Test-Path -Path $folderPath)) {
-              New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
-          }
-          $agentAccount = "Authenticated Users"
-          icacls "${folderPath}\*" /grant "${agentAccount}:(OI)(CI)F" /T
-        shell: pwsh
+          sqlcmd -b -S "$env:SQL_SERVER" -U "$env:SQL_USERNAME" -P "$env:SQL_PASSWORD" -d "$env:DATABASE_NAME" -i "SSIS-Project/Scripts/CreateStoredProcedure.sql"
 
       - name: 5. Locate Visual Studio DevEnv Tool
+        shell: powershell
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath
           if (-not $vsPath) { $vsPath = & "${env:ProgramFiles}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property productPath }
           $devenvCom = Join-Path (Split-Path $vsPath) "devenv.com"
           echo "DEVENV_PATH=$devenvCom" | Out-File -FilePath $env:GITHUB_ENV -Append
-        shell: pwsh
 
       - name: 6. Build SSIS Project to ISPAC via DevEnv
+        shell: powershell
         run: |
-          & "${{ env.DEVENV_PATH }}" "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationTG.dtproj" /Rebuild "Development"
-        shell: pwsh
+          $projectPath = "SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\TimesheetDevTestMigrationTG.dtproj"
+          & "$env:DEVENV_PATH" $projectPath /Rebuild "Development"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # ==================== DEPLOY SSIS USING THE HEX STORAGE METHOD ====================
       - name: 7. Deploy ISPAC via SQL Agent Proxy Bypass
+        shell: pwsh
         run: |
-          Write-Host "Streaming Compiled ISPAC to local SQL Agent Container..."
-          $ispacPath = "SSIS-Project/TimesheetIntegrationTestTwo/TimesheetIntegrationTestTwo/bin/Development/TimesheetDevTestMigrationTG.ispac"
+          $ispacPath = "${{ github.workspace }}\SSIS-Project\TimesheetIntegrationTestTwo\TimesheetIntegrationTestTwo\bin\Development\TimesheetDevTestMigrationTG.ispac"
+          Write-Host "Found ISPAC at: $ispacPath"
+
+          $tunnelAddress = "$env:SQL_SERVER"
+          $dbUser        = "$env:SQL_USERNAME"
+          $dbPassword    = "$env:SQL_PASSWORD"
+          
+          # Fixed Path Alignment Logic
+          $envName = "${{ inputs.environment_name }}".ToLower()
+          if ($envName -eq "production") {
+              $folderName   = "TimesheetProductionMigrationTG"
+              $projectName  = "TimesheetProductionMigrationTG"
+              $packageName  = "TimesheetProductionMigrationPK.dtsx"
+              $executionJobName = "RunTimesheetProductionMigrationTG"
+          } else {
+              $folderName   = "TimesheetDevTestMigrationTG"
+              $projectName  = "TimesheetDevTestMigrationTG"
+              $packageName  = "TimesheetDevTestMigrationTG.dtsx"
+              $executionJobName = "RunTimesheetDevTestMigration"
+          }
+          $tempTable     = "TempHex_$([System.Guid]::NewGuid().ToString('N'))"
+
+          # Read and hex-encode ISPAC
           $fileBytes = [System.IO.File]::ReadAllBytes($ispacPath)
           $hexString = "0x" + [System.BitConverter]::ToString($fileBytes).Replace("-", "")
-          
-          $envName = "${{ inputs.environment_name }}".ToLower()
-          if ($envName -eq "production") {
-              $catalogFolder = "TimesheetProductionMigrationTG"
-              $projectName = "TimesheetProductionMigrationTG"
-          } else {
-              $catalogFolder = "TimesheetDevTestMigrationTG"
-              $projectName = "TimesheetDevTestMigrationTG"
-          }
 
-          $proxyWrapperQuery = @"
-          SET NOCOUNT ON;
-          IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobs WHERE name = N'GitHub_SSIS_Deploy_Helper')
-          BEGIN
-              EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper', @delete_unused_schedule = 1;
-          END
-          
-          DECLARE @jobId BINARY(16);
-          EXEC msdb.dbo.sp_add_job @job_name = N'GitHub_SSIS_Deploy_Helper', @enabled = 1, @job_id = @jobId OUTPUT;
-          
-          DECLARE @dynamic_tsql NVARCHAR(MAX);
-          SET @dynamic_tsql = N'
-          SET NOCOUNT ON;
-          IF NOT EXISTS (SELECT 1 FROM [SSISDB].[catalog].[folders] WHERE name = N''$catalogFolder'') 
-          BEGIN 
-              EXEC [SSISDB].[catalog].[create_folder] @folder_name = N''$catalogFolder''; 
-          END
-          
-          DECLARE @project_binary VARBINARY(MAX) = $hexString;
-          EXEC [SSISDB].[catalog].[deploy_project] @folder_name = N''$catalogFolder'', @project_name = N''$projectName'', @project_stream = @project_binary;
-          ';
-          
-          EXEC msdb.dbo.sp_add_jobstep @job_name = N'GitHub_SSIS_Deploy_Helper', @step_name = N'Run_ISPAC_Deploy', @step_id = 1, @subsystem = N'TSQL', @command = @dynamic_tsql;
-          EXEC msdb.dbo.sp_add_jobserver @job_name = N'GitHub_SSIS_Deploy_Helper', @server_name = N'(local)';
-          EXEC msdb.dbo.sp_start_job @job_name = N'GitHub_SSIS_Deploy_Helper';
-
-          DECLARE @job_finished INT = 0;
-          WHILE (@job_finished = 0)
-          BEGIN
-              WAITFOR DELAY '00:00:02';
-              IF EXISTS (SELECT 1 FROM msdb.dbo.sysjobhistory WHERE job_id = @jobId AND step_id = 0)
-              BEGIN
-                  SET @job_finished = 1;
-              END;
-          END;
-
-          EXEC msdb.dbo.sp_delete_job @job_name = N'GitHub_SSIS_Deploy_Helper';
+          # Create temp table and stream hex
+          $tempSql = Join-Path $env:TEMP "create_temp_$([System.Guid]::NewGuid().ToString('N')).sql"
+          $createTableSql = @"
+          USE SSISDB;
+          IF OBJECT_ID('dbo.$tempTable', 'U') IS NOT NULL DROP TABLE dbo.$tempTable;
+          CREATE TABLE dbo.$tempTable (HexString NVARCHAR(MAX) NOT NULL);
+          INSERT INTO dbo.$tempTable (HexString) VALUES (N'$hexString');
           "@
+          $createTableSql | Out-File -FilePath $tempSql -Encoding utf8
           
-          $tempSqlFile = Join-Path $env:RUNNER_TEMP "RunProxyDeploy.sql"
-          $proxyWrapperQuery | Out-File -FilePath $tempSqlFile -Encoding utf8 -Force
-          
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -i $tempSqlFile -b -C
-        shell: pwsh
+          sqlcmd -b -S "$tunnelAddress" -U "$dbUser" -P "$dbPassword" -i $tempSql
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
-      - name: 8. Provision 30-Second Scheduled Execution Job
-        run: |
-          $envName = "${{ inputs.environment_name }}".ToLower()
-          if ($envName -eq "production") {
-              # Locked to the exact physical names verified inside her active catalog
-              $jobName = "RunTimesheetProductionMigrationTG"
-              $catalogFolder = "TimesheetProductionMigration"
-              $projectName = "TimesheetMigrationTwo"
-          } else {
-              $jobName = "RunTimesheetDevTestMigration"
-              $catalogFolder = "TimesheetDevTestMigrationTG"
-              $projectName = "TimesheetDevTestMigrationTG"
+          # Build T-SQL script for deployment execution loop
+          $deployScript = @"
+          USE SSISDB;
+          DECLARE @hex NVARCHAR(MAX);
+          SELECT @hex = HexString FROM dbo.$tempTable;
+          IF NOT EXISTS (SELECT 1 FROM [catalog].[folders] WHERE name = N'$folderName')
+          BEGIN
+              EXEC [catalog].[create_folder] @folder_name = N'$folderName';
+          END
+          DECLARE @project_stream VARBINARY(MAX) = CONVERT(VARBINARY(MAX), @hex, 1);
+          EXEC [catalog].[deploy_project]
+              @folder_name = N'$folderName',
+              @project_name = N'$projectName',
+              @project_stream = @project_stream;
+          "@
+
+          $helperJobName = "GitHub_SSIS_Deploy_Helper"
+
+          $createJobSql = @"
+          USE [msdb];
+          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$helperJobName')
+          BEGIN
+              EXEC dbo.sp_delete_job @job_name = N'$helperJobName', @delete_unused_schedule=1;
+          END
+          EXEC dbo.sp_add_job @job_name = N'$helperJobName', @enabled = 1, @start_step_id = 1;
+          DECLARE @deploy_script NVARCHAR(MAX) = N'$($deployScript -replace "'", "''")';
+          EXEC dbo.sp_add_jobstep
+              @job_name = N'$helperJobName',
+              @step_name = N'Run Deploy',
+              @subsystem = N'TSQL',
+              @command = @deploy_script,
+              @retry_attempts = 0;
+          EXEC dbo.sp_add_jobserver
+              @job_name = N'$helperJobName',
+              @server_name = N'(local)';
+          EXEC dbo.sp_start_job @job_name = N'$helperJobName';
+          "@
+
+          $connStrMsdb = "Data Source=$tunnelAddress;Initial Catalog=msdb;User ID=$dbUser;Password=$dbPassword;TrustServerCertificate=True;Encrypt=False;"
+          $conn2 = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
+          try {
+              $conn2.Open()
+              $cmd2 = $conn2.CreateCommand()
+              $cmd2.CommandText = $createJobSql
+              $cmd2.ExecuteNonQuery() | Out-Null
+          } finally {
+              if ($conn2.State -eq 'Open') { $conn2.Close() }
           }
 
-          Write-Host "Piping job setup matrix over tunnel for Job Name: $jobName"
+          # Monitor Job Status until completed
+          $isRunningSql = "USE [msdb]; SELECT TOP 1 ja.stop_execution_date FROM msdb.dbo.sysjobactivity ja INNER JOIN msdb.dbo.sysjobs j ON ja.job_id = j.job_id WHERE j.name = N'$helperJobName' ORDER BY ja.start_execution_date DESC;"
+          $outcomeSql = "USE [msdb]; DECLARE @job_id UNIQUEIDENTIFIER = (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$helperJobName'); SELECT TOP 1 run_status FROM msdb.dbo.sysjobhistory WHERE job_id = @job_id AND step_id = 0 ORDER BY instance_id DESC;"
+          
+          $finished = $false
+          while ($true) {
+              Start-Sleep -Seconds 4
+              $pollConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
+              try {
+                  $pollConn.Open()
+                  $stopDate = (New-Object System.Data.SqlClient.SqlCommand($isRunningSql, $pollConn)).ExecuteScalar()
+                  if ($stopDate -ne $null -and $stopDate -isnot [DBNull]) { break }
+              } finally { $pollConn.Close() }
+          }
 
-          sqlcmd -S "${{ vars.SQL_SERVER }}" -U "${{ secrets.sql_username }}" -P "${{ secrets.sql_password }}" -d msdb -i "SSIS-Project/Scripts/ProvisionJob.sql" -b -v TARGET_JOB_NAME="$jobName" CATALOG_FOLDER="$catalogFolder" PROJECT_NAME="$projectName"
+          # Verify deployment execution state
+          $statusConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
+          try {
+              $statusConn.Open()
+              $runStatus = (New-Object System.Data.SqlClient.SqlCommand($outcomeSql, $statusConn)).ExecuteScalar()
+              if ($runStatus -ne 1) { 
+                  Write-Error "Helper job failed deployment string loop."
+                  exit 1 
+              }
+          } finally { $statusConn.Close() }
+
+          # Final cleanup tracking
+          $cleanupSql = "USE [msdb]; EXEC dbo.sp_delete_job @job_name = N'$helperJobName'; USE SSISDB; DROP TABLE dbo.$tempTable;"
+          $cleanConn = New-Object System.Data.SqlClient.SqlConnection($connStrMsdb)
+          try {
+              $cleanConn.Open()
+              (New-Object System.Data.SqlClient.SqlCommand($cleanupSql, $cleanConn)).ExecuteNonQuery() | Out-Null
+          } finally { $cleanConn.Close() }
+
+          Remove-Item $tempSql -Force -ErrorAction SilentlyContinue
+
+      # ==================== CREATE PERMANENT SCHEDULED JOB ====================
+      - name: 8. Provision 30-Second Scheduled Execution Job
         shell: pwsh
+        run: |
+          $tunnelAddress = "$env:SQL_SERVER"
+          $dbUser        = "$env:SQL_USERNAME"
+          $dbPassword    = "$env:SQL_PASSWORD"
+          
+          $envName = "${{ inputs.environment_name }}".ToLower()
+          if ($envName -eq "production") {
+              $folderName   = "TimesheetProductionMigrationTG"
+              $projectName  = "TimesheetProductionMigrationTG"
+              $packageName  = "TimesheetProductionMigrationPK.dtsx"
+              $executionJobName = "RunTimesheetProductionMigrationTG"
+              $targetDatabase = "TimesheetTGDB"
+          } else {
+              $folderName   = "TimesheetDevTestMigrationTG"
+              $projectName  = "TimesheetDevTestMigrationTG"
+              $packageName  = "TimesheetDevTestMigrationTG.dtsx"
+              $executionJobName = "RunTimesheetDevTestMigration"
+              $targetDatabase = "TimesheetDB"
+          }
+
+          $jobSql = @"
+          USE [msdb];
+          IF EXISTS (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = N'$executionJobName')
+          BEGIN
+              EXEC dbo.sp_delete_job @job_name = N'$executionJobName', @delete_unused_schedule=1;
+          END
+
+          DECLARE @jobId BINARY(16);
+          EXEC dbo.sp_add_job
+              @job_name = N'$executionJobName',
+              @enabled = 1,
+              @owner_login_name = N'sa',
+              @job_id = @jobId OUTPUT;
+
+          DECLARE @run_command NVARCHAR(MAX);
+          SET @run_command = N'
+          DECLARE @execution_id BIGINT;
+          EXEC [SSISDB].[catalog].[create_execution]
+              @folder_name = N''$folderName'',
+              @project_name = N''$projectName'',
+              @package_name = N''$packageName'',
+              @use32bitruntime = False,
+              @execution_id = @execution_id OUTPUT;
+          
+          EXEC [SSISDB].[catalog].[set_execution_parameter_value] @execution_id, @object_type = 50, @parameter_name = N''LOGGING_LEVEL'', @parameter_value = 1;
+          
+          -- Connection Intercepts Targeting The Correct Formatted Connection Key Lookups
+          EXEC [SSISDB].[catalog].[set_object_parameter_value] @object_type = 30, @folder_name = N''$folderName'', @project_name = N''$projectName'', @parameter_name = N''CM.LocalHost.TimesheetTGDB.ConnectionString'', @parameter_value = N''Data Source=' + @@SERVERNAME + N';Initial Catalog=$targetDatabase;Provider=SQLNCLI11.1;Integrated Security=SSPI;Auto Translate=False;'';
+
+          EXEC [SSISDB].[catalog].[start_execution] @execution_id;
+          ';
+
+          EXEC dbo.sp_add_jobstep
+              @job_name = N'$executionJobName',
+              @step_name = N'Execute SSIS Package',
+              @subsystem = N'TSQL',
+              @command = @run_command,
+              @retry_attempts = 0;
+
+          EXEC dbo.sp_add_jobserver @job_name = N'$executionJobName', @server_name = N'(local)';
+
+          EXEC dbo.sp_add_jobschedule
+              @job_name = N'$executionJobName',
+              @name = N'Every30Seconds',
+              @enabled = 1,
+              @freq_type = 4,
+              @freq_interval = 1,
+              @freq_subday_type = 2,
+              @freq_subday_interval = 30,
+              @active_start_time = 000000;
+          "@
+
+          $connection = New-Object System.Data.SqlClient.SqlConnection("Data Source=$tunnelAddress;Initial Catalog=msdb;User ID=$dbUser;Password=$dbPassword;TrustServerCertificate=True;Encrypt=False;")
+          try {
+              $connection.Open()
+              $command = $connection.CreateCommand()
+              $command.CommandText = $jobSql
+              $command.ExecuteNonQuery() | Out-Null
+              Write-Host "SUCCESS: Target execution job configured successfully."
+          } finally { $connection.Close() }
