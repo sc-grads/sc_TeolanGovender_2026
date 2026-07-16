@@ -1,4 +1,4 @@
-name: Deploy My SSIS Package To Both PCs
+name: Timesheet Automation
 
 on:
   push:

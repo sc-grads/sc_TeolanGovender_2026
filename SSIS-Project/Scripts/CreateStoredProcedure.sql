@@ -150,7 +150,8 @@ BEGIN
     SELECT @LV_Deletes = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'DELETE';
     SET @EndTimeLV = SYSDATETIME();
 
-    -- 4. CONDITIONAL LOGGING: Now fires if inserts, updates, OR deletes happen.
+
+    -- 4. CONDITIONAL LOGGING: tiggers when an insert, update or deletion occurs.
     IF (@TS_Inserts + @TS_Updates + @TS_Deletes > 0)
     BEGIN
         INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
@@ -158,7 +159,7 @@ BEGIN
             @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
             @TS_Inserts, @TS_Updates, @TS_Deletes, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
         );
-    END;
+    END; --timesheet table log
 
     IF (@LV_Inserts + @LV_Updates + @LV_Deletes > 0)
     BEGIN
@@ -167,7 +168,7 @@ BEGIN
             @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
             @LV_Inserts, @LV_Updates, @LV_Deletes, @ExecutionUser, 'dbo.Leave', DATEDIFF(MILLISECOND, @StartTimeLV, @EndTimeLV)
         );
-    END;
+    END;--leave table log
 
 END;
 GO
