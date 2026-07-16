@@ -10,11 +10,11 @@
   DTS:ExecutableType="Microsoft.Package"
   DTS:LastModifiedProductVersion="17.0.1016.0"
   DTS:LocaleID="7177"
-  DTS:MaxErrorCount="9999"
+  DTS:MaxErrorCount="5"
   DTS:ObjectName="TimesheetDevTestMigrationTG"
   DTS:PackageType="5"
-  DTS:VersionBuild="438"
-  DTS:VersionGUID="{DE0F129A-088C-44C4-833C-1489852EC913}">
+  DTS:VersionBuild="444"
+  DTS:VersionGUID="{FFE2D18C-E6A1-43E3-8ABD-CB6095EA4695}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -352,7 +352,6 @@
       DTS:refId="Package\Clean-up Tables"
       DTS:CreationName="Microsoft.ExecuteSQLTask"
       DTS:Description="Execute SQL Task"
-      DTS:Disabled="True"
       DTS:DTSID="{6298280F-7020-46AD-A4C9-6FE019B239CA}"
       DTS:ExecutableType="Microsoft.ExecuteSQLTask"
       DTS:LocaleID="-1"
@@ -2040,11 +2039,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                           name="Derived Column Output"
                           startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Derived Column.Outputs[Derived Column Output]" />
                         <path
-                          refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Excel Source Output]"
-                          endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Inputs[Data Conversion Input]"
-                          name="Excel Source Output"
-                          startId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Excel Source.Outputs[Excel Source Output]" />
-                        <path
                           refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Row Count Output 1]"
                           endId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\OLE DB Destination.Inputs[OLE DB Destination Input]"
                           name="Row Count Output 1"
@@ -3714,28 +3708,28 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
         <NodeLayout
           Size="160,42"
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\Expression Task"
-          TopLeft="36.0909090909091,10" />
+          TopLeft="36.0909090909091,11" />
         <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container.PrecedenceConstraints[Constraint]"
-          TopLeft="118.147295616961,52">
+          TopLeft="118.147295616961,53">
           <EdgeLayout.Curve>
             <mssgle:Curve
               StartConnector="{assembly:Null}"
-              EndConnector="0,39.840741251192"
+              EndConnector="0,38.840741251192"
               Start="0,0"
-              End="0,32.340741251192">
+              End="0,31.340741251192">
               <mssgle:Curve.Segments>
                 <mssgle:SegmentCollection
                   Capacity="5">
                   <mssgle:LineSegment
-                    End="0,32.340741251192" />
+                    End="0,31.340741251192" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
             <mssgm:EdgeLabel
-              BoundingBox="-8,8.170370625596,16,16"
+              BoundingBox="-8,7.670370625596,16,16"
               RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
@@ -3948,28 +3942,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Derived Column"
           TopLeft="421,269" />
         <EdgeLayout
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Data Conversion Output]"
-          TopLeft="491.166650457516,142.866667913331">
-          <EdgeLayout.Curve>
-            <mssgle:Curve
-              StartConnector="{assembly:Null}"
-              EndConnector="0,36.866667293443"
-              Start="0,0"
-              End="0,29.366667293443">
-              <mssgle:Curve.Segments>
-                <mssgle:SegmentCollection
-                  Capacity="5">
-                  <mssgle:LineSegment
-                    End="0,29.366667293443" />
-                </mssgle:SegmentCollection>
-              </mssgle:Curve.Segments>
-            </mssgle:Curve>
-          </EdgeLayout.Curve>
-          <EdgeLayout.Labels>
-            <EdgeLabelCollection />
-          </EdgeLayout.Labels>
-        </EdgeLayout>
-        <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Case 1]"
           TopLeft="490.833316908943,221.733335206774">
           <EdgeLayout.Curve>
@@ -4036,29 +4008,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
-          </EdgeLayout.Labels>
-        </EdgeLayout>
-        <EdgeLayout
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Excel Source Output]"
-          TopLeft="494.833317306308,67.533334028986">
-          <EdgeLayout.Curve>
-            <mssgle:Curve
-              StartConnector="{assembly:Null}"
-              EndConnector="0,33.333333884345"
-              Start="0,0"
-              End="0,25.833333884345">
-              <mssgle:Curve.Segments>
-                <mssgle:SegmentCollection
-                  Capacity="5">
-                  <mssgle:LineSegment
-                    End="0,25.833333884345" />
-                </mssgle:SegmentCollection>
-              </mssgle:Curve.Segments>
-            </mssgle:Curve>
-          </EdgeLayout.Curve>
-          <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="-18.3333412475055,16.8333347625205,16,16"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4093,6 +4045,30 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
             <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Data Conversion Output]"
+          TopLeft="491.166650457516,142.866667913331">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,36.866667293443"
+              Start="0,0"
+              End="0,29.366667293443">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,29.366667293443" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <mssgm:EdgeLabel
+              BoundingBox="-8,6.68333364672149,16,16"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
       </GraphLayout>
@@ -4167,7 +4143,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4189,7 +4167,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4211,7 +4191,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
@@ -4233,7 +4215,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
             </mssgle:Curve>
           </EdgeLayout.Curve>
           <EdgeLayout.Labels>
-            <EdgeLabelCollection />
+            <mssgm:EdgeLabel
+              BoundingBox="0,0,0,0"
+              RelativePosition="Any" />
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
