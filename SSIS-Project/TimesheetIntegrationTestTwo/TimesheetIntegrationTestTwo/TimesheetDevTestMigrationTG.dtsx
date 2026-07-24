@@ -13,8 +13,8 @@
   DTS:MaxErrorCount="5"
   DTS:ObjectName="TimesheetDevTestMigrationTG"
   DTS:PackageType="5"
-  DTS:VersionBuild="445"
-  DTS:VersionGUID="{842C22F9-E435-4501-BDC5-9FCAB9391C61}">
+  DTS:VersionBuild="448"
+  DTS:VersionGUID="{A1F2234F-A73D-4FDA-8FA0-C88D0F1A952A}">
   <DTS:Property
     DTS:Name="PackageFormatVersion">8</DTS:Property>
   <DTS:ConnectionManagers>
@@ -86,18 +86,6 @@
       </DTS:ObjectData>
     </DTS:ConnectionManager>
   </DTS:ConnectionManagers>
-  <DTS:LogProviders>
-    <DTS:LogProvider
-      DTS:ConfigString="{9DBAFDBA-9572-468E-AACB-696D1C7DF6E2}"
-      DTS:CreationName="Microsoft.LogProviderTextFile"
-      DTS:Description="Writes log entries for events to a CSV file"
-      DTS:DTSID="{9E782F38-F076-426F-A171-3E981CAC635F}"
-      DTS:ObjectName="SSIS log provider for Text files">
-      <DTS:ObjectData>
-        <InnerObject />
-      </DTS:ObjectData>
-    </DTS:LogProvider>
-  </DTS:LogProviders>
   <DTS:Variables>
     <DTS:Variable
       DTS:CreationName=""
@@ -342,10 +330,6 @@
       <DTS:Property
         DTS:Name="DataBytes">-1</DTS:Property>
     </DTS:Property>
-    <DTS:SelectedLogProviders>
-      <DTS:SelectedLogProvider
-        DTS:InstanceID="{9E782F38-F076-426F-A171-3E981CAC635F}" />
-    </DTS:SelectedLogProviders>
   </DTS:LoggingOptions>
   <DTS:Executables>
     <DTS:Executable
@@ -452,35 +436,14 @@
               ReadOnlyVariables="User::FilePath"
               ReadWriteVariables="User::ConsultantFirstName,User::ConsultantLastName,User::FileMonth">
               <ProjectItem
-                Name="Properties\AssemblyInfo.cs"
-                Encoding="UTF8"><![CDATA[using System.Reflection;
-using System.Runtime.CompilerServices;
-
-//
-// General Information about an assembly is controlled through the following 
-// set of attributes. Change these attribute values to modify the information
-// associated with an assembly.
-//
-[assembly: AssemblyTitle("ST_60eb37b9ed4f4037ae2f29b251c5b383")]
-[assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("HP")]
-[assembly: AssemblyProduct("ST_60eb37b9ed4f4037ae2f29b251c5b383")]
-[assembly: AssemblyCopyright("Copyright @ HP 2026")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]
-//
-// Version information for an assembly consists of the following four values:
-//
-//      Major Version
-//      Minor Version 
-//      Build Number
-//      Revision
-//
-// You can specify all the values or you can default the Revision and Build Numbers 
-// by using the '*' as shown below:
-
-[assembly: AssemblyVersion("1.0.*")]]]></ProjectItem>
+                Name="Properties\Settings.settings"
+                Encoding="UTF8"><![CDATA[<?xml version='1.0' encoding='iso-8859-1'?>
+<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
+  <Profiles>
+    <Profile Name="(Default)" />
+  </Profiles>
+  <Settings />
+</SettingsFile>]]></ProjectItem>
               <ProjectItem
                 Name="Properties\Resources.resx"
                 Encoding="UTF8"><![CDATA[<?xml version="1.0" encoding="utf-8"?>
@@ -893,14 +856,35 @@ namespace ST_60eb37b9ed4f4037ae2f29b251c5b383.Properties {
     }
 }]]></ProjectItem>
               <ProjectItem
-                Name="Properties\Settings.settings"
-                Encoding="UTF8"><![CDATA[<?xml version='1.0' encoding='iso-8859-1'?>
-<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
-  <Profiles>
-    <Profile Name="(Default)" />
-  </Profiles>
-  <Settings />
-</SettingsFile>]]></ProjectItem>
+                Name="Properties\AssemblyInfo.cs"
+                Encoding="UTF8"><![CDATA[using System.Reflection;
+using System.Runtime.CompilerServices;
+
+//
+// General Information about an assembly is controlled through the following 
+// set of attributes. Change these attribute values to modify the information
+// associated with an assembly.
+//
+[assembly: AssemblyTitle("ST_60eb37b9ed4f4037ae2f29b251c5b383")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("HP")]
+[assembly: AssemblyProduct("ST_60eb37b9ed4f4037ae2f29b251c5b383")]
+[assembly: AssemblyCopyright("Copyright @ HP 2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+//
+// Version information for an assembly consists of the following four values:
+//
+//      Major Version
+//      Minor Version 
+//      Build Number
+//      Revision
+//
+// You can specify all the values or you can default the Revision and Build Numbers 
+// by using the '*' as shown below:
+
+[assembly: AssemblyVersion("1.0.*")]]]></ProjectItem>
               <ProjectItem
                 Name="Properties\Resources.Designer.cs"
                 Encoding="UTF8"><![CDATA[//------------------------------------------------------------------------------
@@ -1254,11 +1238,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                               name="Data Conversion Input">
                               <inputColumns>
                                 <inputColumn
-                                  refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Inputs[Data Conversion Input].Columns[Date]"
-                                  cachedDataType="date"
-                                  cachedName="Date"
-                                  lineageId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Excel Source.Outputs[Excel Source Output].Columns[Date]" />
-                                <inputColumn
                                   refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Inputs[Data Conversion Input].Columns[TH]"
                                   cachedDataType="date"
                                   cachedName="TH"
@@ -1284,26 +1263,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                               name="Data Conversion Output"
                               synchronousInputId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Inputs[Data Conversion Input]">
                               <outputColumns>
-                                <outputColumn
-                                  refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Outputs[Data Conversion Output].Columns[Copy of Date]"
-                                  dataType="dbDate"
-                                  errorOrTruncationOperation="Conversion"
-                                  errorRowDisposition="FailComponent"
-                                  lineageId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Outputs[Data Conversion Output].Columns[Copy of Date]"
-                                  name="Copy of Date"
-                                  truncationRowDisposition="FailComponent">
-                                  <properties>
-                                    <property
-                                      containsID="true"
-                                      dataType="System.Int32"
-                                      description="Specifies the input column used as the source of data for the conversion."
-                                      name="SourceInputColumnLineageID">#{Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Excel Source.Outputs[Excel Source Output].Columns[Date]}</property>
-                                    <property
-                                      dataType="System.Boolean"
-                                      description="Indicates whether the column uses the faster, locale-neutral parsing routines."
-                                      name="FastParse">false</property>
-                                  </properties>
-                                </outputColumn>
                                 <outputColumn
                                   refId="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Data Conversion.Outputs[Data Conversion Output].Columns[Copy of TH]"
                                   dataType="dbTime"
@@ -3564,54 +3523,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
               DTS:To="Package\Foreach File Loop\Sequence Container B\DFT_Leave" />
           </DTS:PrecedenceConstraints>
         </DTS:Executable>
-        <DTS:Executable
-          DTS:refId="Package\Foreach File Loop\SQL Log File"
-          DTS:CreationName="Microsoft.ExecuteSQLTask"
-          DTS:Description="Execute SQL Task"
-          DTS:Disabled="True"
-          DTS:DTSID="{F9BAFE76-A167-49A0-B3D6-0D030BDB2C85}"
-          DTS:ExecutableType="Microsoft.ExecuteSQLTask"
-          DTS:LocaleID="-1"
-          DTS:ObjectName="SQL Log File"
-          DTS:ThreadHint="1">
-          <DTS:Variables />
-          <DTS:ObjectData>
-            <SQLTask:SqlTaskData
-              SQLTask:Connection="{586DBD94-516D-4552-B22E-618D96030E36}"
-              SQLTask:SqlStatementSource="INSERT INTO dbo.AuditLog (&#xA;    RunNumber, &#xA;    LogSource, &#xA;    TaskName, &#xA;    LogStatus, &#xA;    RowsInserted, -- Total Rows Extracted to Staging&#xA;    RowsUpdated, &#xA;    RowsDeleted, &#xA;    ExecutedBy, &#xA;    TargetTable, &#xA;    ExecutionDurationMs&#xA;)&#xA;VALUES (&#xA;    ?, -- Maps to User::RunNumber&#xA;    ?, -- Maps to User::FilePath&#xA;    ?, -- Maps to System::TaskName&#xA;    'STAGED', &#xA;    ? + ?, -- Adds Timesheet + Leave rows extracted from this file&#xA;    0, &#xA;    0, &#xA;    CAST(SYSTEM_USER AS VARCHAR(100)), &#xA;    'stg.Extraction', &#xA;    0&#xA;);" xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask">
-              <SQLTask:ParameterBinding
-                SQLTask:ParameterName="0"
-                SQLTask:DtsVariableName="User::RunNumber"
-                SQLTask:ParameterDirection="Input"
-                SQLTask:DataType="3"
-                SQLTask:ParameterSize="-1" />
-              <SQLTask:ParameterBinding
-                SQLTask:ParameterName="1"
-                SQLTask:DtsVariableName="User::FilePath"
-                SQLTask:ParameterDirection="Input"
-                SQLTask:DataType="129"
-                SQLTask:ParameterSize="-1" />
-              <SQLTask:ParameterBinding
-                SQLTask:ParameterName="2"
-                SQLTask:DtsVariableName="System::TaskName"
-                SQLTask:ParameterDirection="Input"
-                SQLTask:DataType="129"
-                SQLTask:ParameterSize="-1" />
-              <SQLTask:ParameterBinding
-                SQLTask:ParameterName="3"
-                SQLTask:DtsVariableName="User::RowTimesheetCount"
-                SQLTask:ParameterDirection="Input"
-                SQLTask:DataType="3"
-                SQLTask:ParameterSize="-1" />
-              <SQLTask:ParameterBinding
-                SQLTask:ParameterName="4"
-                SQLTask:DtsVariableName="User::RowLeaveCount"
-                SQLTask:ParameterDirection="Input"
-                SQLTask:DataType="3"
-                SQLTask:ParameterSize="-1" />
-            </SQLTask:SqlTaskData>
-          </DTS:ObjectData>
-        </DTS:Executable>
       </DTS:Executables>
       <DTS:PrecedenceConstraints>
         <DTS:PrecedenceConstraint
@@ -3791,10 +3702,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           Size="249,282"
           Id="Package\Foreach File Loop\Sequence Container B"
           TopLeft="386.747474747475,69.4242424242426" />
-        <NodeLayout
-          Size="143,42"
-          Id="Package\Foreach File Loop\SQL Log File"
-          TopLeft="411,395" />
         <EdgeLayout
           Id="Package\Foreach File Loop.PrecedenceConstraints[Constraint 1]"
           TopLeft="305.222222222222,253.833333333333">
@@ -3947,6 +3854,28 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet\Derived Column"
           TopLeft="421,269" />
         <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Data Conversion Output]"
+          TopLeft="491.166650457516,142.866667913331">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,36.866667293443"
+              Start="0,0"
+              End="0,29.366667293443">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,29.366667293443" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Case 1]"
           TopLeft="490.833316908943,221.733335206774">
           <EdgeLayout.Curve>
@@ -4017,6 +3946,28 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
           </EdgeLayout.Labels>
         </EdgeLayout>
         <EdgeLayout
+          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Excel Source Output]"
+          TopLeft="494.833317306308,67.533334028986">
+          <EdgeLayout.Curve>
+            <mssgle:Curve
+              StartConnector="{assembly:Null}"
+              EndConnector="0,33.333333884345"
+              Start="0,0"
+              End="0,25.833333884345">
+              <mssgle:Curve.Segments>
+                <mssgle:SegmentCollection
+                  Capacity="5">
+                  <mssgle:LineSegment
+                    End="0,25.833333884345" />
+                </mssgle:SegmentCollection>
+              </mssgle:Curve.Segments>
+            </mssgle:Curve>
+          </EdgeLayout.Curve>
+          <EdgeLayout.Labels>
+            <EdgeLabelCollection />
+          </EdgeLayout.Labels>
+        </EdgeLayout>
+        <EdgeLayout
           Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Derived Column Output]"
           TopLeft="500,311">
           <EdgeLayout.Curve>
@@ -4042,50 +3993,6 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</BinaryItem>
                     Point3="12.5,18.5" />
                   <mssgle:LineSegment
                     End="12.5,21.5" />
-                </mssgle:SegmentCollection>
-              </mssgle:Curve.Segments>
-            </mssgle:Curve>
-          </EdgeLayout.Curve>
-          <EdgeLayout.Labels>
-            <EdgeLabelCollection />
-          </EdgeLayout.Labels>
-        </EdgeLayout>
-        <EdgeLayout
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Data Conversion Output]"
-          TopLeft="491.166650457516,142.866667913331">
-          <EdgeLayout.Curve>
-            <mssgle:Curve
-              StartConnector="{assembly:Null}"
-              EndConnector="0,36.866667293443"
-              Start="0,0"
-              End="0,29.366667293443">
-              <mssgle:Curve.Segments>
-                <mssgle:SegmentCollection
-                  Capacity="5">
-                  <mssgle:LineSegment
-                    End="0,29.366667293443" />
-                </mssgle:SegmentCollection>
-              </mssgle:Curve.Segments>
-            </mssgle:Curve>
-          </EdgeLayout.Curve>
-          <EdgeLayout.Labels>
-            <EdgeLabelCollection />
-          </EdgeLayout.Labels>
-        </EdgeLayout>
-        <EdgeLayout
-          Id="Package\Foreach File Loop\Sequence Container A\Foreach Worksheet Loop Container\DFT_Timesheet.Paths[Excel Source Output]"
-          TopLeft="494.833317306308,67.533334028986">
-          <EdgeLayout.Curve>
-            <mssgle:Curve
-              StartConnector="{assembly:Null}"
-              EndConnector="0,33.333333884345"
-              Start="0,0"
-              End="0,25.833333884345">
-              <mssgle:Curve.Segments>
-                <mssgle:SegmentCollection
-                  Capacity="5">
-                  <mssgle:LineSegment
-                    End="0,25.833333884345" />
                 </mssgle:SegmentCollection>
               </mssgle:Curve.Segments>
             </mssgle:Curve>

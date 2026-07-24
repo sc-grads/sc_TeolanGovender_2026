@@ -12,6 +12,9 @@ END;
 GO
 
 -- 2. DEPLOY MAIN DELTA UPSERT PIPELINE ENGINE
+USE TimesheetTGDB;
+GO
+
 CREATE OR ALTER PROCEDURE dbo.usp_ProcessStagingToMaster
     @CurrentFilePath VARCHAR(500) = 'Manual Execution / Unknown',
     @SSISTaskName VARCHAR(200) = 'Stored Procedure Execution',
@@ -34,7 +37,7 @@ BEGIN
     DECLARE @StartTimeTS DATETIME2 = SYSDATETIME(), @EndTimeTS DATETIME2;
     DECLARE @StartTimeLV DATETIME2 = SYSDATETIME(), @EndTimeLV DATETIME2;
 
-    -- Delta Metric Tracking Variables (Added Deletes)
+    -- Delta Metric Tracking Variables
     DECLARE @TS_Inserts INT = 0, @TS_Updates INT = 0, @TS_Deletes INT = 0;
     DECLARE @LV_Inserts INT = 0, @LV_Updates INT = 0, @LV_Deletes INT = 0;
 
@@ -90,34 +93,143 @@ BEGIN
     SELECT @TS_Deletes = COUNT(*) FROM @TimesheetActions WHERE ActionTaken = 'DELETE';
     SET @EndTimeTS = SYSDATETIME();
 
+    -- =========================================================================
+    -- 2.5 EXTRACT & CONSOLIDATE CONSECUTIVE LEAVE FROM TIMESHEET STAGING
+    -- =========================================================================
+    DECLARE @TargetYear VARCHAR(4) = '2026';
+
+    ;WITH ParsedTimesheetLeave AS (
+        -- Step 1: Filter timesheet leave rows & parse dates cleanly
+        SELECT 
+            TRIM(t.ConsultantFirstName) AS FirstName,
+            TRIM(t.ConsultantLastName) AS LastName,
+            ISNULL(NULLIF(TRIM(t.[Description]), ''), 'Leave') AS LeaveType,
+            ts_date.ParsedTSDate AS LeaveDate,
+            CASE 
+                WHEN TRY_CAST(t.TotalHours AS DECIMAL(5,2)) > 0 AND TRY_CAST(t.TotalHours AS DECIMAL(5,2)) <= 4.0 THEN 0.5
+                ELSE 1.0
+            END AS DayValue
+        FROM stg.Timesheet t
+        CROSS APPLY (
+            SELECT COALESCE(
+                TRY_CAST(TRIM(t.[Date]) AS DATE),
+                CASE 
+                    WHEN t.[Date] LIKE '%/%' THEN TRY_CONVERT(DATE, t.[Date], 101)
+                    WHEN t.[Date] LIKE '%-%' AND (t.[Date] LIKE '%-2026%' OR t.[Date] LIKE '%-26%') THEN TRY_CONVERT(DATE, t.[Date], 105)
+                    ELSE TRY_CAST(TRIM(t.[Date]) + '-' + @TargetYear AS DATE)
+                END
+            ) AS ParsedTSDate
+        ) ts_date
+        WHERE LOWER(t.[Description]) LIKE '%leave%'
+          AND ts_date.ParsedTSDate IS NOT NULL
+          -- Exclude dates covered by an existing Leave tab entry
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM stg.Leave l
+              CROSS APPLY (
+                  SELECT 
+                      COALESCE(
+                          TRY_CAST(TRIM(l.StartDate) AS DATE),
+                          CASE 
+                              WHEN l.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, l.StartDate, 101)
+                              WHEN l.StartDate LIKE '%-%' AND (l.StartDate LIKE '%-2026%' OR l.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, l.StartDate, 105)
+                              ELSE TRY_CAST(TRIM(l.StartDate) + '-' + @TargetYear AS DATE)
+                          END
+                      ) AS ParsedStartDate,
+                      COALESCE(
+                          TRY_CAST(TRIM(l.EndDate) AS DATE),
+                          CASE 
+                              WHEN l.EndDate IS NULL OR TRIM(l.EndDate) = '' THEN 
+                                  COALESCE(
+                                      TRY_CAST(TRIM(l.StartDate) AS DATE),
+                                      CASE 
+                                          WHEN l.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, l.StartDate, 101)
+                                          WHEN l.StartDate LIKE '%-%' AND (l.StartDate LIKE '%-2026%' OR l.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, l.StartDate, 105)
+                                          ELSE TRY_CAST(TRIM(l.StartDate) + '-' + @TargetYear AS DATE)
+                                      END
+                                  )
+                              ELSE 
+                                  CASE 
+                                      WHEN l.EndDate LIKE '%/%' THEN TRY_CONVERT(DATE, l.EndDate, 101)
+                                      WHEN l.EndDate LIKE '%-%' AND (l.EndDate LIKE '%-2026%' OR l.EndDate LIKE '%-26%') THEN TRY_CONVERT(DATE, l.EndDate, 105)
+                                      ELSE TRY_CAST(TRIM(l.EndDate) + '-' + @TargetYear AS DATE)
+                                  END
+                          END
+                      ) AS ParsedEndDate
+              ) l_dates
+              WHERE TRIM(l.ConsultantFirstName) = TRIM(t.ConsultantFirstName)
+                AND TRIM(l.ConsultantLastName) = TRIM(t.ConsultantLastName)
+                AND ts_date.ParsedTSDate BETWEEN l_dates.ParsedStartDate AND l_dates.ParsedEndDate
+          )
+    ),
+    Islands AS (
+        -- Step 2: Assign an island anchor to group consecutive days
+        SELECT 
+            FirstName,
+            LastName,
+            LeaveType,
+            LeaveDate,
+            DayValue,
+            DATEADD(DAY, -ROW_NUMBER() OVER (PARTITION BY FirstName, LastName, LeaveType ORDER BY LeaveDate), LeaveDate) AS IslandGroup
+        FROM ParsedTimesheetLeave
+    )
+    -- Step 3: Insert consolidated consecutive blocks into stg.Leave
+    INSERT INTO stg.Leave (
+        ConsultantFirstName,
+        ConsultantLastName,
+        LeaveType,
+        StartDate,
+        EndDate,
+        NumberOfDays
+    )
+    SELECT 
+        FirstName,
+        LastName,
+        LeaveType,
+        CONVERT(VARCHAR(10), MIN(LeaveDate), 120) AS StartDate,
+        CONVERT(VARCHAR(10), MAX(LeaveDate), 120) AS EndDate,
+        CAST(SUM(DayValue) AS VARCHAR(10)) AS NumberOfDays
+    FROM Islands
+    GROUP BY FirstName, LastName, LeaveType, IslandGroup;
+
+    -- =========================================================================
     -- 3. LEAVE MERGE
+    -- =========================================================================
     SET @StartTimeLV = SYSDATETIME();
     DECLARE @LeaveActions TABLE (ActionTaken VARCHAR(20));
-    DECLARE @TargetYear VARCHAR(4) = '2026';
 
     ;WITH CleanedLeave AS (
         SELECT 
             ISNULL(c.ConsultantID, @DefaultConsultantID) AS ConsultantID,
             TRIM(s.LeaveType) AS LeaveType,
-            CASE 
-                WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
-                WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
-                ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
-            END AS ParsedStartDate,
-            CASE 
-                WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN 
-                    CASE 
-                        WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
-                        WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
-                        ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
-                    END
-                ELSE 
-                    CASE 
-                        WHEN s.EndDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.EndDate, 101)
-                        WHEN s.EndDate LIKE '%-%' AND (s.EndDate LIKE '%-2026%' OR s.EndDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.EndDate, 105)
-                        ELSE TRY_CAST(TRIM(s.EndDate) + '-' + @TargetYear AS DATE)
-                    END
-            END AS ParsedEndDate,
+            COALESCE(
+                TRY_CAST(TRIM(s.StartDate) AS DATE),
+                CASE 
+                    WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
+                    WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
+                    ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
+                END
+            ) AS ParsedStartDate,
+            COALESCE(
+                TRY_CAST(TRIM(s.EndDate) AS DATE),
+                CASE 
+                    WHEN s.EndDate IS NULL OR TRIM(s.EndDate) = '' THEN 
+                        COALESCE(
+                            TRY_CAST(TRIM(s.StartDate) AS DATE),
+                            CASE 
+                                WHEN s.StartDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.StartDate, 101)
+                                WHEN s.StartDate LIKE '%-%' AND (s.StartDate LIKE '%-2026%' OR s.StartDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.StartDate, 105)
+                                ELSE TRY_CAST(TRIM(s.StartDate) + '-' + @TargetYear AS DATE)
+                            END
+                        )
+                    ELSE 
+                        CASE 
+                            WHEN s.EndDate LIKE '%/%' THEN TRY_CONVERT(DATE, s.EndDate, 101)
+                            WHEN s.EndDate LIKE '%-%' AND (s.EndDate LIKE '%-2026%' OR s.EndDate LIKE '%-26%') THEN TRY_CONVERT(DATE, s.EndDate, 105)
+                            ELSE TRY_CAST(TRIM(s.EndDate) + '-' + @TargetYear AS DATE)
+                        END
+                END
+            ) AS ParsedEndDate,
             CASE 
                 WHEN LOWER(TRIM(s.NumberOfDays)) = 'half day' THEN 0.5
                 ELSE ISNULL(TRY_CAST(TRIM(s.NumberOfDays) AS DECIMAL(4,1)), 1.0)
@@ -150,8 +262,7 @@ BEGIN
     SELECT @LV_Deletes = COUNT(*) FROM @LeaveActions WHERE ActionTaken = 'DELETE';
     SET @EndTimeLV = SYSDATETIME();
 
-
-    -- 4. CONDITIONAL LOGGING: tiggers when an insert, update or deletion occurs.
+    -- 4. CONDITIONAL LOGGING
     IF (@TS_Inserts + @TS_Updates + @TS_Deletes > 0)
     BEGIN
         INSERT INTO dbo.AuditLog (RunNumber, LogSource, TaskName, LogStatus, RowsInserted, RowsUpdated, RowsDeleted, ExecutedBy, TargetTable, ExecutionDurationMs)
@@ -159,7 +270,7 @@ BEGIN
             @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
             @TS_Inserts, @TS_Updates, @TS_Deletes, @ExecutionUser, 'dbo.Timesheet', DATEDIFF(MILLISECOND, @StartTimeTS, @EndTimeTS)
         );
-    END; --timesheet table log
+    END;
 
     IF (@LV_Inserts + @LV_Updates + @LV_Deletes > 0)
     BEGIN
@@ -168,7 +279,6 @@ BEGIN
             @CurrentRunNumber, @CurrentFilePath, @SSISTaskName, 'SUCCESS', 
             @LV_Inserts, @LV_Updates, @LV_Deletes, @ExecutionUser, 'dbo.Leave', DATEDIFF(MILLISECOND, @StartTimeLV, @EndTimeLV)
         );
-    END;--leave table log
-
+    END;
 END;
 GO
