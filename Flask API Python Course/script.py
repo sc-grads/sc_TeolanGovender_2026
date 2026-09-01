@@ -1,12 +1,15 @@
-name = "Bob"
-print(f"Hello, {name}")
-name = "Rolf"
-print(f"Hello, {name}")
+#difference
+friends = {"Bob", "Rolf", "Anne"}
+abroad = {"Bob", "Rolf"}
 
-name2 = "Bob"
-greeting = "Hello, {}"
-with_name = greeting.format(name2)
-with_name_two = greeting.format("Rolf")
+localFriends = friends.difference(abroad)
+print(localFriends)
 
-print(with_name)
-print(with_name_two)
+print("--------------------------------------------------")
+
+#Union
+local = {"Anne"}
+abroad = {"Bob", "Rolf"}
+
+Friends = local.union(abroad)
+print(Friends)
