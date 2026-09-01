@@ -1,24 +1,8 @@
-#difference
-friends = {"Bob", "Rolf", "Anne"}
-abroad = {"Bob", "Rolf"}
+day_of_week = input("What day of the week is it today? ")
 
-localFriends = friends.difference(abroad)
-print(localFriends)
+if day_of_week == "Monday":
+    print("Have a great start to your week!")
+else:
+    print("Full speed ahead!")
 
-print("--------------------------------------------------")
-
-#Union
-local = {"Anne"}
-abroad = {"Bob", "Rolf"}
-
-Friends = local.union(abroad)
-print(Friends)
-
-print("--------------------------------------------------")
-
-#Intersection
-art = {"Bob", "Jen", "Rolf", "Charlie"}
-science = {"Bob", "Jen", "Adam", "Anne"}
-
-both = art.intersection(science)
-print(both)
+print("This always runs.")
