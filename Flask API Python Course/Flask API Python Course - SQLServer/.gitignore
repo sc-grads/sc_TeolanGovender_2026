@@ -1,0 +1,6 @@
+.venve
+.vscode
+__pycache__
+data.db
+*.__pycache__
+.DS_Store
