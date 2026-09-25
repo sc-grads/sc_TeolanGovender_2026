@@ -9,6 +9,7 @@ export interface ProductProps {
   description: string;
   price: number;
   image_url: string;
+  quantity: number;
   category_id: number;
   category?: CategoryProps;
 }
@@ -32,6 +33,7 @@ export interface CartItemProps {
     description: string;
     price: number;
     image_url: string;
+    quantity: number;
   };
 }
 
@@ -62,4 +64,23 @@ export interface OrderTypes {
   order_amount: number;
   status: string;
   items: OrderItemProps[];
+}
+
+export interface AddressProps {
+  address_id: number;
+  address_line_1: string;
+  address_line_2: string;
+  city: string;
+  province: string;
+  postal_code: string;
+}
+
+export interface ProductResponse {
+  products: ProductProps[];
+  page: number;
+  pages: number;
+  total: number;
+  per_page: number;
+  has_next: boolean;
+  has_prev: boolean;
 }

@@ -7,6 +7,7 @@ class PlainProductSchema(Schema):
     description = fields.Str(required=True)
     price = fields.Float(required=True)
     image_url = fields.Str(required=True)
+    quantity = fields.Int(required=True)
 
 class PlainCategorySchema(Schema):
     category_id = fields.Int(dump_only=True)
@@ -27,7 +28,12 @@ class UserRegisterSchema(Schema):
     role = fields.Str(required=True, validate=validate.OneOf(["customer", "employee"]))
 
     phone_number = fields.Str()
-    address = fields.Str()
+
+    address_line_1 = fields.Str()
+    address_line_2 = fields.Str()
+    city = fields.Str()
+    province = fields.Str()
+    postal_code = fields.Str()
 
     department = fields.Str()
 
@@ -37,11 +43,18 @@ class UserLoginSchema(Schema):
     password = fields.Str(required=True, load_only=True)
     #role = fields.Str(required=True)
     
+class AddressSchema(Schema):
+    address_id = fields.Int(dump_only=True)
+    address_line_1 = fields.Str(required=True)
+    address_line_2 = fields.Str(allow_none=True)
+    city = fields.Str(required=True)
+    province = fields.Str(required=True)
+    postal_code = fields.Str(required=True)
 
 class CustomerSchema(Schema):
     user_id = fields.Int(dump_only=True)
     phone_number = fields.Str(required=True)
-    address = fields.Str(required=True, load_only=True)
+    addresses = fields.List(fields.Nested(AddressSchema()),dump_only=True)
 
 class ProfileSchema(Schema):
     user_id = fields.Int(dump_only=True)
@@ -49,7 +62,7 @@ class ProfileSchema(Schema):
     last_name = fields.Str(required=True)
     email = fields.Email(required=True)
     phone_number = fields.Str()
-    address = fields.Str()
+    addresses = fields.List(fields.Nested(AddressSchema()), dump_only=True)
 
 
 class UpdateProfileSchema(Schema):
@@ -57,8 +70,6 @@ class UpdateProfileSchema(Schema):
     last_name = fields.Str()
     email = fields.Email()
     phone_number = fields.Str()
-    address = fields.Str()
-
 
 class ChangePasswordSchema(Schema):
     current_password = fields.Str(required=True, load_only=True)
@@ -100,18 +111,20 @@ class OrderItemSchema(Schema):
 
 class OrderSchema(Schema):
     order_id = fields.Int(dump_only=True)
-    user_id = fields.Int(dump_only=True)
     order_date = fields.DateTime(dump_only=True)
+    address_id = fields.Int(required=True, load_only=True)
     order_amount = fields.Float(dump_only=True)
     status = fields.Str(dump_only=True)
     items = fields.List(fields.Nested(OrderItemSchema()), dump_only=True)
     first_name = fields.Str(attribute="user.first_name")
     last_name = fields.Str(attribute="user.last_name")
-    address = fields.Str(attribute="customer.address")
+    address_line_1 = fields.Str(attribute="address.address_line_1")
+    address_line_2 = fields.Str(attribute="address.address_line_2")
+    payment_intent_id = fields.Str(required=True, load_only=True)
 
 
 class UpdateOrderStatusSchema(Schema):
     status = fields.Str(
         required=True,
-        validate=validate.OneOf(["Pending", "Processing", "Shipped", "Delivered", "Cancelled"])
+        validate=validate.OneOf(["Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Refunded"])
     )

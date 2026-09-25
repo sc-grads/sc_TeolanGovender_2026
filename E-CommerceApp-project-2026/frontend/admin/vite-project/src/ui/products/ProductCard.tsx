@@ -19,6 +19,7 @@ const ProductCard = ({
   const [name, setName] = useState(product?.name || "");
   const [description, setDescription] = useState(product?.description || "");
   const [price, setPrice] = useState(product?.price.toString() || "");
+  const [quantity, setQuantity] = useState(product?.quantity.toString() || "");
   const [imageUrl, setImageUrl] = useState(product?.image_url || "");
   const [categoryId, setCategoryId] = useState(
     product?.category_id.toString() || ""
@@ -58,6 +59,7 @@ const ProductCard = ({
       description,
       price: Number(price),
       image_url: imageUrl,
+      quantity: Number(quantity),
       category_id: Number(categoryId),
     };
 
@@ -110,6 +112,14 @@ const ProductCard = ({
           placeholder="Price"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
+          className="border p-2 w-full mb-3"
+        />
+
+        <input
+          type="number"
+          placeholder="Quantity"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
           className="border p-2 w-full mb-3"
         />
 

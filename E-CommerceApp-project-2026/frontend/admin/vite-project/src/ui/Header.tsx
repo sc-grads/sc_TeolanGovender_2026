@@ -20,7 +20,7 @@ import ProfileMenu from "./account/ProfileMenu";
 const bottomNavigation = [
   { title: "Product Management", link: "/product" },
   { title: "Order Management", link: "/order-management" },
-  { title: "Account Management", link: "/profile" },
+  //{ title: "Account Management", link: "/profile" },
 ];
 
 const Header = () => {

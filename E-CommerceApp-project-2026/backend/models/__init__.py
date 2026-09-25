@@ -6,5 +6,8 @@ from models.role import EmployeeModel
 from models.cart import CartModel
 from models.order import OrderModel
 from models.product_order import ProductOrderModel
+#from models.product_order import ProductCartModel
+from models.address import AddressModel
+from models.auditlog import AuditLogModel
 
-__all__ = ["UserModel", "CartModel", "ProductCartModel", "ProductModel", "CustomerModel", "EmployeeModel", "OrderModel", "ProductOrderModel"]
+__all__ = ["UserModel", "CartModel", "ProductCartModel", "ProductModel", "CustomerModel", "EmployeeModel", "OrderModel", "ProductOrderModel", "AddressModel", "AuditLogModel"]

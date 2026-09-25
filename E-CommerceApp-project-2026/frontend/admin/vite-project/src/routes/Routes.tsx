@@ -10,13 +10,14 @@ import OrderManagement from "../ui/management/OrderManagement";
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<><HomeBanner /><Categories /></>} />
+
+      <Route path="/product" element={<Product />} />
+      
+      <Route path="/" element={<Product />} />
 
       <Route path="/login" element={<Login />} />
 
       <Route path="/register" element={<Registration />} />
-
-      <Route path="/product" element={<Product />} />
 
       <Route path="/cart" element={<Cart />} />
 
