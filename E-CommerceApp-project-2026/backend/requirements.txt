@@ -10,3 +10,4 @@ Flask-SQLAlchemy
 pyodbc
 Flask-Cors
 stripe
+resend

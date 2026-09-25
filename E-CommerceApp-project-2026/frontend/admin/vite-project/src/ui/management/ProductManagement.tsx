@@ -106,6 +106,7 @@ const ProductManagement = () => {
             <th className="border p-2">Description</th>
             <th className="border p-2">Price</th>
             <th className="border p-2">Category</th>
+            <th className="border p-2">Stock</th>
             <th className="border p-2">Actions</th>
           </tr>
         </thead>
@@ -120,6 +121,7 @@ const ProductManagement = () => {
               <td className="border p-2">{product.description}</td>
               <td className="border p-2"> R {Number(product.price).toFixed(2)}</td>
               <td className="border p-2">{product.category?.name} </td>
+              <td className="border p-2">{product.quantity} </td>
               <td className="border p-2">
                 <button onClick={() => {setSelectedProduct(product); setShowCard(true);}} className="text-blue-500 mr-3"> Edit </button>
                 <button onClick={() => handleDelete(product.product_id)} className="text-red-500"> Delete </button>

@@ -6,8 +6,13 @@ import Registration from "../ui/account/Registration";
 import Product from "../ui/products/Product";
 import Cart from "../ui/cart/Cart";
 import Orders from "../ui/order/Orders";
-import Profile from "../ui/account/Profile";
+import Profile from "../ui/profile/Profile";
 import Category from "../ui/products/Category";
+import AddressManagement from "../ui/profile/AddressManagement";
+import ChangePassword from "../ui/account/ChangePassword";
+import DeleteAccount from "../ui/account/DeleteAccount";
+import UpdateProfile from "../ui/profile/UpdateProfile";
+
 
 const AppRoutes = () => {
   return (
@@ -27,6 +32,14 @@ const AppRoutes = () => {
       <Route path="/profile" element={<Profile />} />
 
       <Route path="/category/:categoryId" element={<Category />} />
+
+      <Route path="/addresses" element={<AddressManagement />} />
+
+      <Route path="/change-password" element={<ChangePassword />} />
+
+      <Route path="/delete-account" element={<DeleteAccount />} />
+
+      <Route path="/update-profile" element={<UpdateProfile />} />
     </Routes>
   );
 };

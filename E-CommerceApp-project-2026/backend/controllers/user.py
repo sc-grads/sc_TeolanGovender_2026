@@ -13,7 +13,7 @@ from blocklist import BLOCKLIST
 from db import db
 from schemas import CustomerSchema, UserRegisterSchema
 from schemas import UserLoginSchema, ProfileSchema, UpdateProfileSchema, ChangePasswordSchema
-from models import CustomerModel, EmployeeModel, UserModel
+from models import CustomerModel, EmployeeModel, UserModel, AddressModel
 
 blp = Blueprint("Users", "users", description="Operations on users")
 
@@ -30,26 +30,41 @@ class UserRegister(MethodView):
     role = user_data["role"].lower()
 
     if role == "customer":
-      user = CustomerModel(
-          first_name=user_data["first_name"],
-          last_name=user_data["last_name"],
-          email=user_data["email"],
-          password=hashed_password,
-          phone_number=user_data["phone_number"],
-          address=user_data["address"],
-      )
+        user = CustomerModel(
+            first_name=user_data["first_name"],
+            last_name=user_data["last_name"],
+            email=user_data["email"],
+            password=hashed_password,
+            phone_number=user_data["phone_number"],
+        )
+
+        db.session.add(user)
+        db.session.flush()
+
+        address = AddressModel(
+            user_id=user.user_id,
+            address_line_1=user_data["address_line_1"],
+            address_line_2=user_data.get("address_line_2"),
+            city=user_data["city"],
+            province=user_data["province"],
+            postal_code=user_data["postal_code"],
+        )
+
+        db.session.add(address)
+
     elif role == "employee":
-      user = EmployeeModel(
-          first_name=user_data["first_name"],
-          last_name=user_data["last_name"],
-          email=user_data["email"],
-          password=hashed_password,
-          department=user_data["department"],
-      )
+        user = EmployeeModel(
+            first_name=user_data["first_name"],
+            last_name=user_data["last_name"],
+            email=user_data["email"],
+            password=hashed_password,
+            department=user_data["department"],
+        )
+
+        db.session.add(user)
     else:
       abort(400, message="Invalid role provided.")
 
-    db.session.add(user)
     db.session.commit()
 
     return {
@@ -121,41 +136,8 @@ class UserLogin(MethodView):
                     "last_name": user.last_name,
                     "email": user.email,
                     "role": user.role,
-            },
-}, 200
-            return {
-    "access_token": access_token,
-    "refresh_token": refresh_token,
-    "user": {
-        "user_id": user.user_id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "email": user.email,
-        "role": user.role,
-    },
-}, 200
-            return {
-    "access_token": access_token,
-    "refresh_token": refresh_token,
-    "user": {
-        "user_id": user.user_id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "email": user.email,
-        "role": user.role,
-    },
-}, 200
-            return {
-    "access_token": access_token,
-    "refresh_token": refresh_token,
-    "user": {
-        "user_id": user.user_id,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "email": user.email,
-        "role": user.role,
-    },
-}, 200
+                },
+            }, 200
 
         abort(401, message="Invalid credentials.")
 

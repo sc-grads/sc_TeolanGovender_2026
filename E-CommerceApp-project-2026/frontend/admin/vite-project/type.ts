@@ -9,6 +9,7 @@ export interface ProductProps {
   description: string;
   price: number;
   image_url: string;
+  quantity: number;
   category_id: number;
   category?: CategoryProps;
 }
@@ -62,4 +63,13 @@ export interface OrderTypes {
   order_amount: number;
   status: string;
   items: OrderItemProps[];
+}
+
+export interface AddressProps {
+  address_id: number;
+  address_line_1: string;
+  address_line_2: string;
+  city: string;
+  province: string;
+  postal_code: string;
 }

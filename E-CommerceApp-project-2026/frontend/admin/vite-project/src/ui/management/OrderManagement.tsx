@@ -9,7 +9,12 @@ interface OrderProps {
   order_date: string;
   order_amount: number;
   status: string;
-  address: string;
+  address_id: number;
+  address_line_1: string;
+  address_line_2: string;
+  city: string;
+  province: string;
+  postal_code: string;
 }
 
 const OrderManagement = () => {
@@ -45,13 +50,18 @@ const OrderManagement = () => {
 
   const filteredOrders = orders.filter((order) => {
     const query = search.toLowerCase();
+  
     const matchesSearch =
-      order.order_id.toString().includes(query) ||
-      order.user_id.toString().includes(query) ||
-      order.first_name.toLowerCase().includes(query);
-
-    const matchesStatus = status === "" || order.status === status;
-
+      String(order.order_id ?? "").includes(query) ||
+      String(order.user_id ?? "").includes(query) ||
+      String(order.address_line_1 ?? "").toLowerCase().includes(query) ||
+      String(order.address_line_2 ?? "").toLowerCase().includes(query) ||
+      String(order.first_name ?? "").toLowerCase().includes(query) ||
+      String(order.last_name ?? "").toLowerCase().includes(query);
+  
+    const matchesStatus =
+      status === "" || order.status === status;
+  
     return matchesSearch && matchesStatus;
   });
 
@@ -79,6 +89,7 @@ const OrderManagement = () => {
           <option value="Shipped">Shipped</option>
           <option value="Delivered">Delivered</option>
           <option value="Cancelled">Cancelled</option>
+          <option value="Refunded">Refunded</option>
         </select>
       </div>
 
@@ -115,14 +126,15 @@ const OrderManagement = () => {
                   }
                   className="border rounded p-1"
                 >
-                  <option value="Pending">Pending</option>
+                  {/*<option value="Paid">Paid</option>*/}
                   <option value="Processing">Processing</option>
                   <option value="Shipped">Shipped</option>
                   <option value="Delivered">Delivered</option>
                   <option value="Cancelled">Cancelled</option>
+                  <option value="Refunded">Refunded</option>
                 </select>
               </td>
-              <td className="border p-2"> {order.address} </td>
+              <td className="border p-2"> {order.address_line_1} {order.address_line_2} </td>
             </tr>
           ))}
         </tbody>
