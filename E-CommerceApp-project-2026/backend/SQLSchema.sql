@@ -12,20 +12,6 @@ CREATE TABLE category(
     name VARCHAR(80) NOT NULL
 );
 
-
-INSERT INTO category (Name)
-VALUES
-    ('smart devices'),
-    ('photography'),
-    ('appliances'),
-    ('automotive'),
-    ('cables and adapters'),
-    ('other')
-
-;
-
-SELECT * FROM category;
-
 -----------------------------  PRODUCT  -------------------------------------------
 
 CREATE TABLE product(
@@ -41,14 +27,6 @@ CREATE TABLE product(
         REFERENCES category(category_id)
 );
 
-INSERT INTO product (Name, description ,price, image_url, category_id)
-VALUES
-    ('Iphone 13 pro', 'Where innovation meets expectation', 16000, 'https://images.frandroid.com/wp-content/uploads/2021/09/apple-iphone-13-pro-frandroid-2021.png', 1);
-
-SELECT * FROM product;
-
-
-
 -----------------------------  Product_Cart  -------------------------------------------
 
 CREATE TABLE product_cart (
@@ -60,12 +38,6 @@ CREATE TABLE product_cart (
     FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
     FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE
 );
-SELECT * FROM product_cart
-
-INSERT INTO product_cart(product_id, cart_id, quantity)
-VALUES
-    (1, 1, 1);
-
 
 -----------------------------  Cart  -------------------------------------------
 
@@ -76,12 +48,6 @@ CREATE TABLE cart (
         FOREIGN KEY (user_id)
         REFERENCES users(user_id)
 );
-
-INSERT INTO cart(user_id)
-VALUES
-    (1);
-
-select * FROM cart;
 
 
 -----------------------------  Cart related  -------------------------------------------
@@ -101,7 +67,6 @@ CREATE TABLE product_order (
     FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 );
-SELECT * FROM product_order
 
 -----------------------------  Order  -------------------------------------------
 
@@ -123,20 +88,6 @@ CREATE TABLE orders (
         REFERENCES address(address_id)
 );
 
-
-ALTER TABLE orders
-ADD address_id INT NOT NULL;
-
-ALTER TABLE orders
-ADD CONSTRAINT FK_orders_address
-    FOREIGN KEY (address_id)
-    REFERENCES address(address_id);
-
-
-Select * from orders
-Select * from product_order
-
-
 -----------------------------  USERS  -------------------------------------------
 
 CREATE TABLE users (
@@ -147,10 +98,6 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(80) NOT NULL,
 );
-
-SELECT * FROM users
-SELECT * FROM product_cart
-select * FROM cart
 
 -----------------------------  CUSTOMERS  -------------------------------------------
 
@@ -164,15 +111,6 @@ CREATE TABLE customers (
         REFERENCES users(user_id)
         ON DELETE CASCADE
 );
-SELECT
-    u.user_id,
-    u.first_name,
-    u.last_name,
-    u.email,
-    c.phone_number
-FROM users u
-INNER JOIN customers c
-    ON u.user_id = c.user_id;
 
 -----------------------------  EMPLOYEE  -------------------------------------------
 
@@ -185,29 +123,8 @@ CREATE TABLE employee (
         REFERENCES users(user_id)
         ON DELETE CASCADE
 );
-SELECT
-    u.user_id,
-    u.name,
-    u.email,
-    e.department
-FROM users u
-INNER JOIN employee e
-    ON u.user_id = e.user_id;
 
-
-ALTER TABLE customers
-DROP COLUMN address;
-
-    drop table employee
-    drop table customers
-    drop table users
-    drop table cart
-    drop table orders
-    drop table product_cart
-    drop table product_order
-
-
-    -----------------------------  Address  -------------------------------------------
+-----------------------------  Address  -------------------------------------------
 
     CREATE TABLE address (
     address_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -224,27 +141,84 @@ DROP COLUMN address;
         ON DELETE CASCADE
 );
 
-SELECT * FROM Address
-
-
 -----------------------------  audit  -------------------------------------------
 
 
 CREATE TABLE audit_log (
     audit_id INT IDENTITY(1,1) PRIMARY KEY,
-
-    user_id INT NULL,
-
     method VARCHAR(10) NOT NULL,
     endpoint VARCHAR(255) NOT NULL,
-
     status_code INT NOT NULL,
     response_time_ms INT NOT NULL,
-
     ip_address VARCHAR(45) NULL,
-
     created_at DATETIME2 NOT NULL DEFAULT GETDATE()
 );
 
 SELECT * FROM audit_log
 TRUNCATE TABLE audit_log
+
+-----------------------------  query  -------------------------------------------
+
+--Product query
+SELECT
+    p.product_id,
+    p.name AS product_name,
+    c.name AS category_name,
+    p.price,
+    p.quantity
+FROM product p
+INNER JOIN category c
+    ON p.category_id = c.category_id;
+
+
+--category query
+SELECT
+    p.name,
+    p.price,
+    p.quantity
+FROM product p
+INNER JOIN category c
+    ON p.category_id = c.category_id
+WHERE c.name = 'phones';
+
+
+--customer query
+SELECT
+    u.user_id,
+    u.first_name,
+    u.last_name,
+    u.email,
+    c.phone_number
+FROM users u
+INNER JOIN customers c
+    ON u.user_id = c.user_id;
+
+
+--revenue by product
+SELECT
+    p.name,
+    SUM(po.quantity * po.order_price) AS revenue
+FROM product p
+INNER JOIN product_order po
+    ON p.product_id = po.product_id
+GROUP BY p.name
+ORDER BY revenue DESC;
+
+--monthly revenue
+SELECT
+    YEAR(order_date) AS year,
+    MONTH(order_date) AS month,
+    SUM(order_amount) AS total_sales
+FROM orders
+GROUP BY
+    YEAR(order_date),
+    MONTH(order_date)
+ORDER BY year, month;
+
+--products with <5 items
+SELECT
+    name,
+    quantity
+FROM product
+WHERE quantity <= 5
+ORDER BY quantity;
