@@ -7,6 +7,7 @@ import OrderSummary from "./OrderSummary";
 import OrderConfirmation from "../order/OrderConfirmation";
 import StripeCheckout from "../checkout/StripeCheckout";
 import Awesome from "../order/Awesome";
+import ProfileMenu from "../account/ProfileMenu";
 
 interface Address {
   address_id: number;
@@ -20,14 +21,13 @@ interface Address {
 const Cart = () => {
   const [cart, setCart] = useState<CartProps | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(
-    null
-  );
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
   const [user, setUser] = useState<{
     first_name: string;
@@ -39,7 +39,9 @@ const Cart = () => {
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      return setLoading(false);
+      setIsLoggedIn(false);
+      setLoading(false);
+      return;
     }
 
     const response = await fetch(`${config.baseUrl}/cart`, {
@@ -50,6 +52,15 @@ const Cart = () => {
 
     if (response.ok) {
       setCart(await response.json());
+      setIsLoggedIn(true);
+    } else {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+
+      window.dispatchEvent(new Event("authChange"));
+
+      setIsLoggedIn(false);
     }
 
     setLoading(false);
@@ -78,14 +89,14 @@ const Cart = () => {
 
   const handleCheckout = async (paymentIntentId: string) => {
     const token = localStorage.getItem("access_token");
-    
+
     if (!token) return;
-    
+
     if (!selectedAddress) {
       alert("Please select a delivery address.");
       return;
     }
-  
+
     const response = await fetch(`${config.baseUrl}/checkout`, {
       method: "POST",
       headers: {
@@ -97,17 +108,16 @@ const Cart = () => {
         payment_intent_id: paymentIntentId,
       }),
     });
-  
+
     if (response.ok) {
       setShowCheckout(false);
       setShowSuccess(true);
       await fetchCart();
     } else {
       const error = await response.json();
-    
+
       throw new Error(
-        error.message ||
-          "Something went wrong while creating your order."
+        error.message || "Something went wrong while creating your order."
       );
     }
   };
@@ -129,14 +139,26 @@ const Cart = () => {
     );
   }
 
+  // User is signed out
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-2xl mx-auto p-5">
+        <h1 className="text-2xl font-bold mb-6">My Cart</h1>
+
+        <div className="border-2 border-slate-500 rounded-xl p-8 flex justify-center">
+          <ProfileMenu asCard />
+        </div>
+      </div>
+    );
+  }
+
+  // User is logged in but cart is empty
   if (!cart || cart.items.length === 0) {
     if (showSuccess) {
       return (
         <>
           <div className="max-w-6xl mx-auto px-4 py-20 text-center">
-            <h2 className="text-2xl font-semibold mb-3">
-              Cart is empty
-            </h2>
+            <h2 className="text-2xl font-semibold mb-3">Cart is empty</h2>
           </div>
 
           <Awesome onClose={() => setShowSuccess(false)} />
@@ -146,9 +168,7 @@ const Cart = () => {
 
     return (
       <div className="max-w-6xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-semibold mb-3">
-          Cart is empty
-        </h2>
+        <h2 className="text-2xl font-semibold mb-3">Cart is empty</h2>
       </div>
     );
   }
@@ -156,13 +176,11 @@ const Cart = () => {
   return (
     <>
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-10">
-
         <h1 className="text-2xl sm:text-3xl font-semibold mb-6 sm:mb-8">
           Cart
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 lg:gap-10">
-
           {/* Cart products */}
           <div className="border-2 border-slate-500 rounded-lg p-3 sm:p-6">
             {cart.items.map((item) => (
@@ -189,7 +207,6 @@ const Cart = () => {
               setShowConfirmation(true);
             }}
           />
-
         </div>
       </div>
 
@@ -217,9 +234,7 @@ const Cart = () => {
         />
       )}
 
-      {showSuccess && (
-        <Awesome onClose={() => setShowSuccess(false)} />
-      )}
+      {showSuccess && <Awesome onClose={() => setShowSuccess(false)} />}
     </>
   );
 };

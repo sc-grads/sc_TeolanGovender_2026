@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { config } from "../../../config";
+import ProfileMenu from "../account/ProfileMenu";
 
 interface OrderItem {
   product_id: number;
@@ -20,6 +21,8 @@ interface Order {
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
@@ -27,17 +30,32 @@ const Orders = () => {
   const fetchOrders = async () => {
     const token = localStorage.getItem("access_token");
 
+    if (!token) {
+      setIsLoggedIn(false);
+      return;
+    }
+
     const response = await fetch(`${config.baseUrl}/orders`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
+    if (!response.ok) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+
+      window.dispatchEvent(new Event("authChange"));
+
+      setIsLoggedIn(false);
+      return;
+    }
+
     const data = await response.json();
 
-    if (response.ok) {
-      setOrders(data);
-    }
+    setOrders(data);
+    setIsLoggedIn(true);
   };
 
   useEffect(() => {
@@ -106,6 +124,18 @@ const Orders = () => {
       return dateA - dateB;
     });
 
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-2xl mx-auto p-5">
+        <h1 className="text-2xl font-bold mb-6">My Orders</h1>
+
+        <div className="border-2 border-slate-500 rounded-xl p-8 flex justify-center">
+          <ProfileMenu asCard />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5">
       <h1 className="mb-5 text-2xl font-bold">My Orders</h1>
@@ -119,7 +149,6 @@ const Orders = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full flex-1 rounded-full text-gray-900 text-lg placeholder:text-base placeholder:tracking-wide shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 placeholder:font-normal focus:ring-1 focus:ring-darkText sm:text-sm px-4 py-2"
-          
         />
 
         {/* Date filter */}
@@ -150,9 +179,7 @@ const Orders = () => {
       {orders.length === 0 ? (
         <p>You have no orders yet.</p>
       ) : filteredOrders.length === 0 ? (
-        <p className="text-gray-500">
-          No orders match your search or filter.
-        </p>
+        <p className="text-gray-500">No orders match your search or filter.</p>
       ) : (
         <div className="space-y-4">
           {filteredOrders.map((order) => (
@@ -194,8 +221,7 @@ const Orders = () => {
                 </p>
 
                 <p className="mt-1">
-                  Status:{" "}
-                  <span className="font-semibold">{order.status}</span>
+                  Status: <span className="font-semibold">{order.status}</span>
                 </p>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { type ProductProps } from "../../../type";
 import { config } from "../../../config";
 import { FaCheck } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 interface Props {
   product: ProductProps;
@@ -10,6 +11,7 @@ interface Props {
 const AddToCartBtn = ({ product }: Props) => {
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState(false);
+  const navigate = useNavigate();
 
   const outOfStock = product.quantity === 0;
 
@@ -19,15 +21,13 @@ const AddToCartBtn = ({ product }: Props) => {
     }
 
     const token = localStorage.getItem("access_token");
-
     if (!token) {
-      alert("Please login before adding items to your cart.");
+      navigate("/login");
       return;
     }
 
     try {
       setLoading(true);
-
       const response = await fetch(`${config.baseUrl}/cart`, {
         method: "POST",
         headers: {
@@ -47,9 +47,7 @@ const AddToCartBtn = ({ product }: Props) => {
       }
 
       setAdded(true);
-
       setTimeout(() => setAdded(false), 2000);
-
       window.dispatchEvent(new Event("cartUpdated"));
     } catch (error) {
       console.error("Cart error:", error);
@@ -77,8 +75,7 @@ const AddToCartBtn = ({ product }: Props) => {
         "Adding..."
       ) : added ? (
         <span className="flex items-center justify-center gap-2">
-          <FaCheck />
-          Added
+          <FaCheck /> Added
         </span>
       ) : (
         "Add to Cart"
