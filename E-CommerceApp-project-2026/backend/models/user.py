@@ -8,6 +8,7 @@ class UserModel(db.Model):
   last_name = db.Column(db.String(80), unique=True, nullable=False)
   email = db.Column(db.String(80), unique=True, nullable=False)
   password = db.Column(db.String(80), nullable=False)
+  must_change_password = db.Column(db.Boolean, nullable=False, default=False)
   role = db.Column(db.String(80), nullable=False)
 
   cart = db.relationship("CartModel", back_populates="user", uselist=False)

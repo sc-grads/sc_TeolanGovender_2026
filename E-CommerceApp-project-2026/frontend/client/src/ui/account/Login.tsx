@@ -14,7 +14,9 @@ const Login = () => {
       const response = await fetch(`${config.baseUrl}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.fromEntries(new FormData(e.currentTarget))),
+        body: JSON.stringify(
+          Object.fromEntries(new FormData(e.currentTarget))
+        ),
       });
 
       if (response.status === 401 || !response.ok) {
@@ -24,12 +26,33 @@ const Login = () => {
 
       const data = await response.json();
 
+      const guestToken = localStorage.getItem("guest_token");
+
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
+      // Merge guest cart into user cart
+      if (guestToken) {
+        await fetch(`${config.baseUrl}/cart/merge`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${data.access_token}`,
+            "X-Guest-Token": guestToken,
+          },
+        });
+
+        localStorage.removeItem("guest_token");
+      }
+
+      window.dispatchEvent(new Event("cartUpdated"));
       window.dispatchEvent(new Event("authChange"));
-      navigate("/");
+
+      if (data.must_change_password) {
+        navigate("/change-password");
+      } else {
+        navigate("/");
+      }
     } catch {
       setErrMsg("Incorrect password or email");
     }
@@ -39,15 +62,24 @@ const Login = () => {
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-gray-200 p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold text-darkText">Welcome Back</h1>
-          <p className="text-gray-500 mt-2">Login to your Tech Traders account</p>
+          <h1 className="text-3xl font-semibold text-darkText">
+            Welcome Back
+          </h1>
+
+          <p className="text-gray-500 mt-2">
+            Login to your Tech Traders account
+          </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Email
             </label>
+
             <input
               id="email"
               type="email"
@@ -59,9 +91,13 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Password
             </label>
+
             <input
               id="password"
               type="password"
@@ -97,6 +133,15 @@ const Login = () => {
               Register
             </button>
           </p>
+        </div>
+        <div className="text-center mt-6">
+          <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              className="text-sky-600 font-medium hover:underline"
+            >
+              Forgot Password
+            </button>
         </div>
       </div>
     </div>

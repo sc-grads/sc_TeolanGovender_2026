@@ -121,11 +121,20 @@ const ProfileMenu = ({ asCard = false }: ProfileMenuProps) => {
             </p>
 
             <Link
-              to="/login"
-              className="block w-full bg-sky-500 text-white text-center py-2 rounded-md hover:bg-sky-600 transition"
-            >
-              Login
-            </Link>
+                to="/login"
+                onClick={() => setProfileOpen(false)}
+                className="block w-full bg-sky-500 text-white text-center py-2 rounded-md hover:bg-sky-600 transition"
+              >
+                Login
+              </Link>
+                        
+              <Link
+                to="/register"
+                onClick={() => setProfileOpen(false)}
+                className="mt-3 block w-full bg-sky-500 text-white text-center py-2 rounded-md hover:bg-sky-600 transition"
+              >
+                Register
+              </Link>
           </>
         )}
       </div>
@@ -186,7 +195,15 @@ const ProfileMenu = ({ asCard = false }: ProfileMenuProps) => {
               >
                 Login
               </Link>
-            </>
+
+              <Link
+                to="/register"
+                onClick={() => setProfileOpen(false)}
+                className="mt-3 block w-full bg-sky-500 text-white text-center py-2 rounded-md hover:bg-sky-600 transition"
+              >
+                Register
+              </Link>
+              </>
           )}
         </div>
       )}

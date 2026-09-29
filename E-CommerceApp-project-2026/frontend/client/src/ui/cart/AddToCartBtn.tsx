@@ -2,7 +2,6 @@ import { useState } from "react";
 import { type ProductProps } from "../../../type";
 import { config } from "../../../config";
 import { FaCheck } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
 
 interface Props {
   product: ProductProps;
@@ -11,29 +10,43 @@ interface Props {
 const AddToCartBtn = ({ product }: Props) => {
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState(false);
-  const navigate = useNavigate();
 
   const outOfStock = product.quantity === 0;
+
+  const getGuestToken = () => {
+    let guestToken = localStorage.getItem("guest_token");
+
+    if (!guestToken) {
+      guestToken = crypto.randomUUID();
+      localStorage.setItem("guest_token", guestToken);
+    }
+
+    return guestToken;
+  };
 
   const handleAddToCart = async () => {
     if (outOfStock) {
       return;
     }
 
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
     try {
       setLoading(true);
+
+      const token = localStorage.getItem("access_token");
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      } else {
+        headers["X-Guest-Token"] = getGuestToken();
+      }
+
       const response = await fetch(`${config.baseUrl}/cart`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           product_id: product.product_id,
           quantity: 1,
@@ -48,10 +61,16 @@ const AddToCartBtn = ({ product }: Props) => {
 
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
+
       window.dispatchEvent(new Event("cartUpdated"));
     } catch (error) {
       console.error("Cart error:", error);
-      alert(error instanceof Error ? error.message : "Something went wrong.");
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }

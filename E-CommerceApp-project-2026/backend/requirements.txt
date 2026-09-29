@@ -11,3 +11,4 @@ pyodbc
 Flask-Cors
 stripe
 resend
+tavily

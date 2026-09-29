@@ -128,3 +128,6 @@ class UpdateOrderStatusSchema(Schema):
         required=True,
         validate=validate.OneOf(["Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Refunded"])
     )
+
+class ForgotPasswordSchema(Schema):
+    email = fields.Email(required=True)

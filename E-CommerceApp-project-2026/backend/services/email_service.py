@@ -142,3 +142,29 @@ def send_order_confirmation(order, user):
         "subject": f"TechTraders Order #{order.order_id} Confirmation",
         "html": email_html
     })
+
+def send_password_reset(user, temporary_password):
+
+    with open(
+        "email_templates/password_reset.html",
+        "r",
+        encoding="utf-8"
+    ) as file:
+        email_html = file.read()
+
+    email_html = email_html.replace(
+        "{{ first_name }}",
+        user.first_name
+    )
+
+    email_html = email_html.replace(
+        "{{ temporary_password }}",
+        temporary_password
+    )
+
+    resend.Emails.send({
+        "from": "onboarding@resend.dev",
+        "to": user.email,
+        "subject": "Tech Traders Password Reset",
+        "html": email_html
+    })
