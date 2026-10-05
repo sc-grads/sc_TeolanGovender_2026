@@ -99,8 +99,10 @@ CREATE TABLE users (
     last_name VARCHAR(80) NOT NULL,
     email VARCHAR(50) NOT NULL,
     password VARCHAR(255) NOT NULL,
+    must_change_password BIT NOT NULL DEFAULT 0,
     role VARCHAR(80) NOT NULL,
 );
+SELECT * FROM users
 
 -----------------------------  CUSTOMERS  -------------------------------------------
 
