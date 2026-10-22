@@ -13,7 +13,7 @@ const FooterTop = () => {
         "Get free shipping if you are my neighbour or my neighbours neighbour - but i do expect tea on delivery.",
     },
     {
-      name: "1-day warranty",
+      name: "30-day warranty",
       imageSrc:
         "https://cdn-icons-png.flaticon.com/128/16187/16187262.png",
       description:

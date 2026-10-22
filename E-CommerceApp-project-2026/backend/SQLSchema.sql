@@ -17,7 +17,7 @@ CREATE TABLE category(
 CREATE TABLE product(
     product_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     name VARCHAR(80) NOT NULL,
-    description VARCHAR(500) NOT NULL,
+    description VARCHAR(2000) NOT NULL,
     price FLOAT NOT NULL,
     image_url VARCHAR(500) NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
@@ -32,23 +32,26 @@ CREATE TABLE product(
 CREATE TABLE product_cart (
     product_id INT NOT NULL,
     cart_id INT NOT NULL,
-    quantity INT NOT NULL
-
+    quantity INT NOT NULL,
     PRIMARY KEY (product_id, cart_id),
-    FOREIGN KEY (product_id) REFERENCES product(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE
+    FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (cart_id)
+        REFERENCES cart(cart_id)
+        ON DELETE CASCADE
 );
 
 -----------------------------  Cart  -------------------------------------------
 
 CREATE TABLE cart (
     cart_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT NULL,
+    guest_token VARCHAR(100) NULL,
     CONSTRAINT FK_cart_users
         FOREIGN KEY (user_id)
         REFERENCES users(user_id)
 );
-
 
 -----------------------------  Cart related  -------------------------------------------
 select * FROM cart;
@@ -96,8 +99,10 @@ CREATE TABLE users (
     last_name VARCHAR(80) NOT NULL,
     email VARCHAR(50) NOT NULL,
     password VARCHAR(255) NOT NULL,
+    must_change_password BIT NOT NULL DEFAULT 0,
     role VARCHAR(80) NOT NULL,
 );
+SELECT * FROM users
 
 -----------------------------  CUSTOMERS  -------------------------------------------
 
@@ -139,6 +144,46 @@ CREATE TABLE employee (
         FOREIGN KEY (user_id)
         REFERENCES customers(user_id)
         ON DELETE CASCADE
+);
+
+-----------------------------  product cache  -------------------------------------------
+
+CREATE TABLE ai_product_cache (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    product_id INT NOT NULL UNIQUE,
+    competitor_data NVARCHAR(MAX),
+    review_data NVARCHAR(MAX),
+    updated_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
+);
+
+select * from ai_product_cache
+
+-----------------------------  guest cart  -------------------------------------------
+
+CREATE TABLE guest_cart (
+    guest_cart_id INT IDENTITY(1,1) PRIMARY KEY,
+    guest_token VARCHAR(100) NOT NULL UNIQUE,
+    created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+    updated_at DATETIME2 NOT NULL DEFAULT GETDATE()
+);
+
+-----------------------------  guest product cart  -------------------------------------------
+
+CREATE TABLE guest_cart_item (
+    guest_cart_item_id INT IDENTITY(1,1) PRIMARY KEY,
+    guest_cart_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+
+    FOREIGN KEY (guest_cart_id)
+        REFERENCES guest_cart(guest_cart_id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (product_id)
+        REFERENCES product(product_id)
 );
 
 -----------------------------  audit  -------------------------------------------

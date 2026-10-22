@@ -2,17 +2,16 @@ from flask.views import MethodView
 from flask import abort
 from passlib.hash import pbkdf2_sha256
 from flask_smorest import Blueprint
-from flask_jwt_extended import (
-    create_access_token,
-    create_refresh_token,
-    get_jwt_identity,
-    get_jwt,
-    jwt_required,
-)
+from flask_jwt_extended import (create_access_token, create_refresh_token, get_jwt_identity, get_jwt, jwt_required)
+
+import secrets
+import string
+from services.email_service import send_password_reset
+
 from blocklist import BLOCKLIST
 from db import db
 from schemas import CustomerSchema, UserRegisterSchema
-from schemas import UserLoginSchema, ProfileSchema, UpdateProfileSchema, ChangePasswordSchema
+from schemas import UserLoginSchema, ProfileSchema, UpdateProfileSchema, ChangePasswordSchema, ForgotPasswordSchema
 from models import CustomerModel, EmployeeModel, UserModel, AddressModel
 
 blp = Blueprint("Users", "users", description="Operations on users")
@@ -130,6 +129,7 @@ class UserLogin(MethodView):
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token,
+                "must_change_password": user.must_change_password,
                 "user": {
                     "user_id": user.user_id,
                     "first_name": user.first_name,
@@ -262,6 +262,44 @@ class ChangePassword(MethodView):
             password_data["new_password"]
         )
 
+        user.must_change_password = False
+
         db.session.commit()
 
         return {"message": "Password changed successfully."}, 200
+
+
+@blp.route("/forgot-password")
+class ForgotPassword(MethodView):
+
+    @blp.arguments(ForgotPasswordSchema)
+    def post(self, data):
+        email = data["email"]
+
+        user = UserModel.query.filter(
+            UserModel.email == email
+        ).first()
+
+        if not user:
+            abort(404, message="Account does not exist.")
+
+        characters = string.ascii_letters + string.digits + "!@#$%^&*"
+
+        temporary_password = "".join(
+            secrets.choice(characters)
+            for _ in range(12)
+        )
+
+        user.password = pbkdf2_sha256.hash(temporary_password)
+        user.must_change_password = True
+
+        db.session.commit()
+
+        send_password_reset(
+            user,
+            temporary_password
+        )
+
+        return {
+            "message": "A temporary password has been sent to your email."
+        }, 200

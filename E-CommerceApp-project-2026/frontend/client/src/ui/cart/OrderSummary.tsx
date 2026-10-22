@@ -2,13 +2,13 @@ import AddressSelector from "../profile/AddressSelector";
 import type { AddressProps } from "../../../type";
 import { useNavigate } from "react-router-dom";
 
-
 type OrderSummaryProps = {
   total: number;
   itemCount: number;
   selectedAddressId?: number;
   onAddressSelect: (address: AddressProps) => void;
   onCheckout: () => void;
+  isLoggedIn: boolean;
 };
 
 const OrderSummary = ({
@@ -17,8 +17,8 @@ const OrderSummary = ({
   selectedAddressId,
   onAddressSelect,
   onCheckout,
+  isLoggedIn,
 }: OrderSummaryProps) => {
-
   const hasSelectedAddress = selectedAddressId !== undefined;
   const navigate = useNavigate();
 
@@ -45,36 +45,35 @@ const OrderSummary = ({
           Delivery Address
         </h3>
 
-        <button
-                  type="button"
-                  onClick={() => navigate("/profile")}
-                  className="text-sky-600 hover:underline mt-3"> Edit </button>
+        {isLoggedIn && (
+          <>
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="text-sky-600 hover:underline mt-3"
+            >
+              Edit
+            </button>
 
-        <AddressSelector
-          selectedAddressId={selectedAddressId}
-          onSelect={onAddressSelect}
-        />
+            <AddressSelector
+              selectedAddressId={selectedAddressId}
+              onSelect={onAddressSelect}
+            />
+          </>
+        )}
       </div>
 
-      <div
-        title={
-          hasSelectedAddress
-            ? ""
-            : "Select an address before checking out."
-        }
+      <button
+        onClick={onCheckout}
+        disabled={isLoggedIn && !hasSelectedAddress}
+        className={`w-full py-3 rounded-lg transition ${
+          !isLoggedIn || hasSelectedAddress
+            ? "bg-greenText text-white hover:bg-skyText"
+            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+        }`}
       >
-        <button
-          onClick={onCheckout}
-          disabled={!hasSelectedAddress}
-          className={`w-full py-3 rounded-lg transition ${
-            hasSelectedAddress
-              ? "bg-greenText text-white hover:bg-skyText"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
-        >
-          Checkout
-        </button>
-      </div>
+        Checkout
+      </button>
     </div>
   );
 };

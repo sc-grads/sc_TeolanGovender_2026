@@ -3,6 +3,11 @@ from flask_jwt_extended import get_jwt, jwt_required
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
 from utils.employee_required import employee_required
+from services.tavily_service import compare_product
+from services.tavily_service import find_youtube_reviews
+from models.ai_product_cache import AIProductCache
+from datetime import datetime, timedelta
+import json
 
 from db import db
 from models import ProductModel
@@ -16,7 +21,7 @@ blp = Blueprint("products", __name__, description="Operations on products")
 class product(MethodView):
     @blp.response(200, ProductSchema)
     def get(self, product_id):
-        employee_required() 
+        #employee_required() 
         prod = ProductModel.query.get_or_404(product_id)
         return prod
 
@@ -74,6 +79,77 @@ class product(MethodView):
 
         return product
     """
+
+
+@blp.route("/product/<string:product_id>/compare")
+class ProductCompare(MethodView):
+
+    def get(self, product_id):
+        product = ProductModel.query.get_or_404(product_id)
+
+        cache = AIProductCache.query.filter_by(
+            product_id=product.product_id
+        ).first()
+
+        # Return cached competitor results if less than 30 days old
+        if (
+            cache
+            and cache.competitor_data
+            and cache.updated_at > datetime.utcnow() - timedelta(days=30)
+        ):
+            return json.loads(cache.competitor_data)
+
+        # No cache or cache is older than 30 days - use Tavily
+        results = compare_product(
+            product.name,
+            product.image_url
+        )
+
+        # Create or update cache
+        if not cache:
+            cache = AIProductCache(
+                product_id=product.product_id
+            )
+            db.session.add(cache)
+
+        cache.competitor_data = json.dumps(results)
+        db.session.commit()
+
+        return results
+
+
+@blp.route("/product/<string:product_id>/reviews")
+class ProductReviews(MethodView):
+
+    def get(self, product_id):
+        product = ProductModel.query.get_or_404(product_id)
+
+        cache = AIProductCache.query.filter_by(
+            product_id=product.product_id
+        ).first()
+
+        # Return cached review results if less than 30 days old
+        if (
+            cache
+            and cache.review_data
+            and cache.updated_at > datetime.utcnow() - timedelta(days=30)
+        ):
+            return json.loads(cache.review_data)
+
+        # No cache or cache is older than 30 days - use Tavily
+        results = find_youtube_reviews(product.name)
+
+        # Create or update cache
+        if not cache:
+            cache = AIProductCache(
+                product_id=product.product_id
+            )
+            db.session.add(cache)
+
+        cache.review_data = json.dumps(results)
+        db.session.commit()
+
+        return results
 
 
 @blp.route("/product")

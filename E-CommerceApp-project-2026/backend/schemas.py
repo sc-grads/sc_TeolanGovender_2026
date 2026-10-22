@@ -75,14 +75,14 @@ class ChangePasswordSchema(Schema):
     current_password = fields.Str(required=True, load_only=True)
     new_password = fields.Str(required=True, load_only=True)
 
-#------  schema for item inside a cart  --------
+#------  schema for item inside cart  --------
 class CartItemSchema(Schema):
     product_cart_id = fields.Int(dump_only=True)
     quantity = fields.Int(required=True)
     product_id = fields.Int(required=True, load_only=True)
     product = fields.Nested(PlainProductSchema(), dump_only=True)
 
-#------  Schema for POSTing a product into a cart  ------
+#------  Schema for POSTing a product into cart  ------
 class AddToCartSchema(Schema):
     product_id = fields.Int(required=True)
     quantity = fields.Int(required=True)
@@ -128,3 +128,6 @@ class UpdateOrderStatusSchema(Schema):
         required=True,
         validate=validate.OneOf(["Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Refunded"])
     )
+
+class ForgotPasswordSchema(Schema):
+    email = fields.Email(required=True)

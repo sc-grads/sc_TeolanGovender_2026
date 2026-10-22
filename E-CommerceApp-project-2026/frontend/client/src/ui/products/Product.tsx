@@ -17,10 +17,19 @@ const Product = () => {
 
   // Scroll to the top when the page changes
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    const productsSection = document.getElementById("products-section");
+    
+    if (productsSection) {
+      const y =
+        productsSection.getBoundingClientRect().top +
+        window.scrollY -
+        100;
+    
+      window.scrollTo({
+        top: y,
+        behavior: "smooth",
+      });
+    }
   }, [page]);
 
   // Work out which products should be displayed on the current page
@@ -32,8 +41,12 @@ const Product = () => {
   const totalPages = Math.ceil(products.length / productsPerPage);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10">
-      <h1 className="mb-8 text-3xl font-semibold text-darkText">
+    <div 
+    id="products-section"
+    className="mx-auto max-w-7xl px-4 py-10">
+      <h1 
+      
+      className="mb-8 text-3xl font-semibold text-darkText">
         Products
       </h1>
 

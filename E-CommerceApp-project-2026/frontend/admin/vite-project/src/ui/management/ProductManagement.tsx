@@ -119,7 +119,7 @@ const ProductManagement = () => {
               <td className="border p-2"> <img src={product.image_url}className="w-16 h-16 object-contain"/></td>
               <td className="border p-2"> {product.name}</td>
               <td className="border p-2">{product.description}</td>
-              <td className="border p-2"> R {Number(product.price).toFixed(2)}</td>
+              <td className="border p-2"> R{Number(product.price).toFixed(2)}</td>
               <td className="border p-2">{product.category?.name} </td>
               <td className="border p-2">{product.quantity} </td>
               <td className="border p-2">

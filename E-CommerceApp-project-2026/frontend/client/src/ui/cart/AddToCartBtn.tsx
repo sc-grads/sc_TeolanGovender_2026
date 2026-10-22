@@ -13,27 +13,40 @@ const AddToCartBtn = ({ product }: Props) => {
 
   const outOfStock = product.quantity === 0;
 
-  const handleAddToCart = async () => {
-    if (outOfStock) {
-      return;
+  const getGuestToken = () => {
+    let guestToken = localStorage.getItem("guest_token");
+
+    if (!guestToken) {
+      guestToken = crypto.randomUUID();
+      localStorage.setItem("guest_token", guestToken);
     }
 
-    const token = localStorage.getItem("access_token");
+    return guestToken;
+  };
 
-    if (!token) {
-      alert("Please login before adding items to your cart.");
+  const handleAddToCart = async () => {
+    if (outOfStock) {
       return;
     }
 
     try {
       setLoading(true);
 
+      const token = localStorage.getItem("access_token");
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      } else {
+        headers["X-Guest-Token"] = getGuestToken();
+      }
+
       const response = await fetch(`${config.baseUrl}/cart`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           product_id: product.product_id,
           quantity: 1,
@@ -47,13 +60,17 @@ const AddToCartBtn = ({ product }: Props) => {
       }
 
       setAdded(true);
-
       setTimeout(() => setAdded(false), 2000);
 
       window.dispatchEvent(new Event("cartUpdated"));
     } catch (error) {
       console.error("Cart error:", error);
-      alert(error instanceof Error ? error.message : "Something went wrong.");
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }
@@ -77,8 +94,7 @@ const AddToCartBtn = ({ product }: Props) => {
         "Adding..."
       ) : added ? (
         <span className="flex items-center justify-center gap-2">
-          <FaCheck />
-          Added
+          <FaCheck /> Added
         </span>
       ) : (
         "Add to Cart"
